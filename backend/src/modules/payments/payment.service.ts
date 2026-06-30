@@ -36,7 +36,7 @@ export async function createVnpayPayment(
   if (billMember.status === BillMemberStatus.PAID) throw new AppError(400, 'Bạn đã thanh toán hóa đơn này', ErrorCode.VALIDATION_ERROR);
 
   const vnpTxnRef = `${Date.now()}_${crypto.randomBytes(4).toString('hex')}`;
-  let amount = Math.round(bill.totalCost);
+  const amount = Math.round(bill.totalCost);
 
   const payment = await Payment.create({
     billId: bill._id,
