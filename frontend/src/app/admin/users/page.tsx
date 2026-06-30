@@ -221,7 +221,7 @@ export default function AdminUsersPage() {
         <StatCard
           icon={<Shield size={20} />}
           label="Phân quyền hệ thống"
-          value="3 roles"
+          value="3 vai trò"
           accentColor="#7C3AED"
         />
       </div>
