@@ -4,7 +4,7 @@ import * as svc from './dormitory.service.js';
 
 // Building
 export async function listBuildings(req: Request, res: Response) {
-  const data = await svc.listBuildings({ isActive: req.query.isActive as string });
+  const data = await svc.listBuildings({ status: req.query.status as string });
   sendSuccess(res, data);
 }
 export async function createBuilding(req: Request, res: Response) {
