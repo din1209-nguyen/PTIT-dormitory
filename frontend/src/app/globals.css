@@ -1,0 +1,132 @@
+@import "tailwindcss";
+
+/* ===== Design tokens from docs/02-ui-design-system.md ===== */
+@theme inline {
+  /* Primary brand gradient */
+  --color-primary: #1387C9;
+  --color-primary-from: #0B6FB0;
+  --color-primary-to: #3FC1D7;
+
+  /* Accent colors */
+  --color-accent-blue: #1387C9;
+  --color-accent-red: #FF5A6E;
+  --color-accent-teal: #2FD0C8;
+
+  /* Status badges */
+  --color-status-active-bg: #E6F4FF;
+  --color-status-active-text: #1387C9;
+  --color-status-completed-bg: #E5FBF1;
+  --color-status-completed-text: #1FAE6A;
+  --color-status-pending-bg: #FFF7E6;
+  --color-status-pending-text: #D4920A;
+  --color-status-error-bg: #FFF0F0;
+  --color-status-error-text: #E53E3E;
+  --color-status-muted-bg: #EAEAEA;
+  --color-status-muted-text: #8A8F98;
+
+  /* Neutrals */
+  --color-bg-page: #F2F5FA;
+  --color-bg-card: #FFFFFF;
+  --color-bg-sidebar: #FFFFFF;
+  --color-text-primary: #1B2330;
+  --color-text-secondary: #8A8F98;
+  --color-border: #EEF1F6;
+
+  /* Radius */
+  --radius-sm: 8px;
+  --radius-md: 14px;
+  --radius-lg: 20px;
+  --radius-pill: 999px;
+
+  /* Spacing */
+  --spacing-container: 24px;
+  --spacing-card-gap: 16px;
+
+  /* Font */
+  --font-sans: "Inter", "Segoe UI", system-ui, sans-serif;
+}
+
+/* ===== Global base styles ===== */
+body {
+  background: var(--color-bg-page);
+  color: var(--color-text-primary);
+  font-family: var(--font-sans);
+}
+
+/* ===== Modal animations ===== */
+@keyframes modal-overlay-in {
+  from {
+    opacity: 0
+  }
+
+  to {
+    opacity: 1
+  }
+}
+
+@keyframes modal-overlay-out {
+  from {
+    opacity: 1
+  }
+
+  to {
+    opacity: 0
+  }
+}
+
+@keyframes modal-content-in {
+  from {
+    opacity: 0;
+    transform: scale(0.95) translateY(8px)
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0)
+  }
+}
+
+@keyframes modal-content-out {
+  from {
+    opacity: 1;
+    transform: scale(1) translateY(0)
+  }
+
+  to {
+    opacity: 0;
+    transform: scale(0.95) translateY(8px)
+  }
+}
+
+.animate-modal-overlay-in {
+  animation: modal-overlay-in 0.2s ease-out forwards;
+}
+
+.animate-modal-overlay-out {
+  animation: modal-overlay-out 0.15s ease-in forwards;
+}
+
+.animate-modal-content-in {
+  animation: modal-content-in 0.2s ease-out forwards;
+}
+
+.animate-modal-content-out {
+  animation: modal-content-out 0.15s ease-in forwards;
+}
+
+/* ===== Dropdown animation ===== */
+@keyframes dropdown-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px)
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0)
+  }
+}
+
+.animate-dropdown-in {
+  animation: dropdown-in 0.15s ease-out forwards;
+}
