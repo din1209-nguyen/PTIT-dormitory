@@ -26,7 +26,7 @@ export interface UtilityBill {
   status: 'UNPAID' | 'PAID' | 'OVERDUE' | 'CANCELLED';
   dueDate: string;
   paymentDate?: string;
-  priceConfigSnapshot?: Record<string, unknown>;
+  priceConfigSnapshot?: { electricVatAmount?: number; [key: string]: unknown };
   roomMemberSnapshot?: Array<{ studentId: string; studentCode: string; fullName: string }>;
   createdAt: string;
   members?: UtilityBillMember[];

@@ -5,4 +5,5 @@ export interface Regulation {
   status: 'DRAFT' | 'PUBLISHED' | 'ARCHIVED';
   publishedAt?: string;
   createdAt: string;
+  updatedAt: string;
 }

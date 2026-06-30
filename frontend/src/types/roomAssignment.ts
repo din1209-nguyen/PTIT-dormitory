@@ -15,11 +15,19 @@ export interface RoomAssignment {
     isFreshman?: boolean;
     residenceType?: string;
   } | string;
-  semesterId: { _id: string; name: string; term: string; academicYear: string } | string;
+  semesterId: {
+    _id: string;
+    name: string;
+    term: string;
+    academicYear: string;
+    status: string;
+    startDate: string;
+    endDate: string;
+  } | string;
   roomId: { _id: string; roomNumber: string; genderType: string; capacity: number; isFreshmanPriority?: boolean } | string;
   bedId: { _id: string; bedNumber: string } | string;
   assignedAt: string;
   status: 'ACTIVE' | 'ENDED' | 'CANCELLED';
   studentSnapshot?: Record<string, unknown>;
-  roomSnapshot?: Record<string, unknown>;
+  roomSnapshot?: { bedNumber?: string; [key: string]: unknown };
 }

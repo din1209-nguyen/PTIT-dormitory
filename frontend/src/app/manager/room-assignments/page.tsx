@@ -456,7 +456,7 @@ export default function RoomAssignmentsPage() {
                     </Button>
                     {filteredUnassignedStudents.length > 0 && (
                       <Button
-                        variant="destructive"
+                        variant="danger"
                         size="sm"
                         onClick={() => setConfirmRemoveAll(true)}
                         className="flex items-center gap-2"

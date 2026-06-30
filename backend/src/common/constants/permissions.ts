@@ -25,6 +25,7 @@ export enum PermissionCode {
   DORM_READ = 'DORM_READ',
   DORM_CREATE = 'DORM_CREATE',
   DORM_UPDATE = 'DORM_UPDATE',
+  DORM_DELETE = 'DORM_DELETE',
 
   ROOM_ASSIGNMENT_READ = 'ROOM_ASSIGNMENT_READ',
   ROOM_ASSIGNMENT_AUTO = 'ROOM_ASSIGNMENT_AUTO',
@@ -87,6 +88,7 @@ export const ROLE_PERMISSIONS: Record<Role, PermissionCode[]> = {
     PermissionCode.DORM_READ,
     PermissionCode.DORM_CREATE,
     PermissionCode.DORM_UPDATE,
+    PermissionCode.DORM_DELETE,
     PermissionCode.ROOM_ASSIGNMENT_READ,
     PermissionCode.ROOM_ASSIGNMENT_AUTO,
     PermissionCode.ROOM_ASSIGNMENT_MANUAL,
