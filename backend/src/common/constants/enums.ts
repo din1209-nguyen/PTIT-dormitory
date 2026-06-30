@@ -1,0 +1,150 @@
+export enum Gender {
+  MALE = 'MALE',
+  FEMALE = 'FEMALE',
+}
+
+export enum ResidenceType {
+  NOT_RESIDING = 'NOT_RESIDING',
+  PENDING_ROOM = 'PENDING_ROOM',
+  RESIDING = 'RESIDING',
+}
+
+export enum SemesterTerm {
+  SEMESTER_1 = 'SEMESTER_1',
+  SEMESTER_2 = 'SEMESTER_2',
+  SUMMER = 'SUMMER',
+}
+
+export enum SemesterStatus {
+  UNOPENED = 'UNOPENED',
+  PREPARING = 'PREPARING',
+  ACTIVE = 'ACTIVE',
+  FINISHED = 'FINISHED',
+}
+
+export enum ResidenceStatus {
+  PREPARING = 'PREPARING',
+  ACTIVE = 'ACTIVE',
+  ENDED = 'ENDED',
+  CANCELLED = 'CANCELLED',
+}
+
+export enum RoomGenderType {
+  MALE = 'MALE',
+  FEMALE = 'FEMALE',
+}
+
+export enum RoomStatus {
+  ACTIVE = 'ACTIVE',
+  MAINTENANCE = 'MAINTENANCE',
+  INACTIVE = 'INACTIVE',
+}
+
+export enum BedStatus {
+  AVAILABLE = 'AVAILABLE',
+  OCCUPIED = 'OCCUPIED',
+  MAINTENANCE = 'MAINTENANCE',
+  BROKEN = 'BROKEN',
+}
+
+export enum ConfigValueType {
+  STRING = 'STRING',
+  NUMBER = 'NUMBER',
+  BOOLEAN = 'BOOLEAN',
+  JSON = 'JSON',
+}
+
+export enum RegulationStatus {
+  DRAFT = 'DRAFT',
+  PUBLISHED = 'PUBLISHED',
+  ARCHIVED = 'ARCHIVED',
+}
+
+export enum NotificationScope {
+  GENERAL = 'GENERAL',
+  PRIVATE = 'PRIVATE',
+}
+
+export enum NotificationType {
+  GENERAL = 'GENERAL',
+  BILL = 'BILL',
+  VIOLATION = 'VIOLATION',
+  REQUEST = 'REQUEST',
+  REMINDER = 'REMINDER',
+  RESIDENCE = 'RESIDENCE',
+  SYSTEM = 'SYSTEM',
+  APPROVAL_STATUS = 'APPROVAL_STATUS',
+}
+
+export enum RequestType {
+  REQUEST = 'REQUEST',
+  COMPLAINT = 'COMPLAINT',
+  FEEDBACK = 'FEEDBACK',
+  CASH_PAYMENT = 'CASH_PAYMENT',
+  OTHER = 'OTHER',
+}
+
+export enum RequestStatus {
+  PENDING = 'PENDING',
+  PROCESSING = 'PROCESSING',
+  RESOLVED = 'RESOLVED',
+  REJECTED = 'REJECTED',
+}
+
+export enum ViolationStatus {
+  RECORDED = 'RECORDED',
+  PROCESSING = 'PROCESSING',
+  RESOLVED = 'RESOLVED',
+  CANCELLED = 'CANCELLED',
+}
+
+export enum BillStatus {
+  UNPAID = 'UNPAID',
+  PAID = 'PAID',
+  OVERDUE = 'OVERDUE',
+  CANCELLED = 'CANCELLED',
+}
+
+export enum BillMemberStatus {
+  UNPAID = 'UNPAID',
+  PAID = 'PAID',
+  WAIVED = 'WAIVED',
+  CANCELLED = 'CANCELLED',
+}
+
+export enum PaymentMethod {
+  VNPAY = 'VNPAY',
+  CASH = 'CASH',
+}
+
+export enum PaymentStatus {
+  PENDING = 'PENDING',
+  SUCCESS = 'SUCCESS',
+  FAILED = 'FAILED',
+  CANCELLED = 'CANCELLED',
+}
+
+export enum EmailStatus {
+  PENDING = 'PENDING',
+  SENT = 'SENT',
+  FAILED = 'FAILED',
+}
+
+export enum AuditAction {
+  LOGIN_SUCCESS = 'LOGIN_SUCCESS',
+  LOGIN_FAILED = 'LOGIN_FAILED',
+  IMPORT_STUDENT = 'IMPORT_STUDENT',
+  SEMESTER_ACTIVATE = 'SEMESTER_ACTIVATE',
+  SEMESTER_FINISH = 'SEMESTER_FINISH',
+  ROOM_ASSIGN_AUTO = 'ROOM_ASSIGN_AUTO',
+  BILL_CREATE = 'BILL_CREATE',
+  PAYMENT_CASH_CONFIRM = 'PAYMENT_CASH_CONFIRM',
+  PAYMENT_VNPAY = 'PAYMENT_VNPAY',
+  VIOLATION_CREATE = 'VIOLATION_CREATE',
+  REQUEST_PROCESS = 'REQUEST_PROCESS',
+  REGULATION_PUBLISH = 'REGULATION_PUBLISH',
+  CONFIG_UPDATE = 'CONFIG_UPDATE',
+  CREATE = 'CREATE',
+  UPDATE = 'UPDATE',
+  DELETE = 'DELETE',
+}

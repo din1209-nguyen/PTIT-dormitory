@@ -1,0 +1,780 @@
+// =====================================================
+// ERD DBML - Hệ thống quản lý sinh viên ở KTX HVCS
+// Version: Complete Business-Aligned ERD
+// Target: dbdiagram.io / MySQL-style relational design
+// Note: Nếu triển khai MongoDB, có thể map mỗi Table thành collection tương ứng.
+// =====================================================
+
+// =======================
+// ENUMS
+// =======================
+
+Enum "USER_role_enum" {
+  "STUDENT"
+  "MANAGER"
+  "ADMIN"
+}
+
+Enum "USER_status_enum" {
+  "ACTIVE"
+  "INACTIVE"
+  "LOCKED"
+}
+
+Enum "STUDENT_gender_enum" {
+  "MALE"
+  "FEMALE"
+}
+
+Enum "STUDENT_residence_type_enum" {
+  "NOT_RESIDING"
+  "RESIDING"
+}
+
+Enum "SEMESTER_term_enum" {
+  "SEMESTER_1"
+  "SEMESTER_2"
+  "SUMMER"
+}
+
+Enum "SEMESTER_status_enum" {
+  "PREPARING"
+  "ACTIVE"
+  "FINISHED"
+}
+
+Enum "ROOM_gender_type_enum" {
+  "MALE"
+  "FEMALE"
+}
+
+Enum "ROOM_status_enum" {
+  "ACTIVE"
+  "MAINTENANCE"
+  "INACTIVE"
+}
+
+Enum "BED_status_enum" {
+  "AVAILABLE"
+  "OCCUPIED"
+  "MAINTENANCE"
+  "BROKEN"
+}
+
+Enum "RESIDENCE_status_enum" {
+  "PREPARING"
+  "ACTIVE"
+  "ENDED"
+  "CANCELLED"
+}
+
+Enum "ROOM_ASSIGNMENT_status_enum" {
+  "ACTIVE"
+  "ENDED"
+  "CANCELLED"
+}
+
+Enum "REGULATION_status_enum" {
+  "DRAFT"
+  "PUBLISHED"
+  "ARCHIVED"
+}
+
+Enum "NOTIFICATION_scope_enum" {
+  "GENERAL"
+  "PRIVATE"
+}
+
+Enum "NOTIFICATION_type_enum" {
+  "GENERAL"
+  "BILL"
+  "VIOLATION"
+  "REQUEST"
+  "REMINDER"
+  "RESIDENCE"
+  "SYSTEM"
+  "APPROVAL_STATUS"
+}
+
+Enum "REQUEST_type_enum" {
+  "REQUEST"
+  "COMPLAINT"
+  "FEEDBACK"
+  "CASH_PAYMENT"
+  "OTHER"
+}
+
+Enum "REQUEST_status_enum" {
+  "PENDING"
+  "PROCESSING"
+  "RESOLVED"
+  "REJECTED"
+}
+
+Enum "VIOLATION_status_enum" {
+  "RECORDED"
+  "PROCESSING"
+  "RESOLVED"
+  "CANCELLED"
+}
+
+Enum "BILL_status_enum" {
+  "UNPAID"
+  "PENDING_CONFIRMATION"
+  "PAID"
+  "OVERDUE"
+  "CANCELLED"
+}
+
+Enum "BILL_MEMBER_status_enum" {
+  "UNPAID"
+  "PAID"
+  "WAIVED"
+}
+
+Enum "PAYMENT_method_enum" {
+  "VNPAY"
+  "CASH"
+}
+
+Enum "PAYMENT_status_enum" {
+  "PENDING"
+  "SUCCESS"
+  "FAILED"
+  "CANCELLED"
+}
+
+Enum "EMAIL_status_enum" {
+  "PENDING"
+  "SENT"
+  "FAILED"
+}
+
+Enum "IMPORT_status_enum" {
+  "PENDING"
+  "PROCESSING"
+  "SUCCESS"
+  "FAILED"
+  "ROLLED_BACK"
+}
+
+Enum "CONFIG_value_type_enum" {
+  "STRING"
+  "NUMBER"
+  "BOOLEAN"
+  "JSON"
+}
+
+// =======================
+// AUTH, USER, RBAC
+// =======================
+
+Table "USER" {
+  "id" BINARY(16) [pk, default: `UUID_TO_BIN(UUID())`, note: 'ID tài khoản']
+  "username" VARCHAR(50) [unique, not null, note: 'Tên đăng nhập']
+  "password_hash" VARCHAR(255) [not null, note: 'Mật khẩu đã mã hóa']
+  "email" VARCHAR(100) [unique, note: 'Email người dùng']
+  "role" USER_role_enum [not null, default: 'STUDENT', note: 'Vai trò tài khoản']
+  "status" USER_status_enum [not null, default: 'ACTIVE', note: 'Trạng thái tài khoản']
+  "token_version" INT [not null, default: 0, note: 'Dùng để revoke JWT hàng loạt nếu cần']
+  "last_login_at" TIMESTAMP [note: 'Lần đăng nhập gần nhất']
+  "created_at" TIMESTAMP [not null, default: `CURRENT_TIMESTAMP`, note: 'Thời gian tạo']
+  "updated_at" TIMESTAMP [default: `CURRENT_TIMESTAMP`, note: 'Thời gian cập nhật']
+
+  Indexes {
+    (role)
+    (status)
+  }
+}
+
+Table "PERMISSION" {
+  "id" BINARY(16) [pk, default: `UUID_TO_BIN(UUID())`, note: 'ID quyền']
+  "code" VARCHAR(100) [unique, not null, note: 'Mã quyền, ví dụ STUDENT_IMPORT']
+  "description" TEXT [note: 'Mô tả quyền']
+  "created_at" TIMESTAMP [not null, default: `CURRENT_TIMESTAMP`]
+}
+
+Table "ROLE_PERMISSION" {
+  "id" BINARY(16) [pk, default: `UUID_TO_BIN(UUID())`]
+  "role" USER_role_enum [not null, note: 'Vai trò']
+  "permission_id" BINARY(16) [not null, note: 'Quyền được gán cho vai trò']
+
+  Indexes {
+    (role, permission_id) [unique]
+  }
+}
+
+Table "REFRESH_TOKEN" {
+  "id" BINARY(16) [pk, default: `UUID_TO_BIN(UUID())`, note: 'ID refresh token session']
+  "user_id" BINARY(16) [not null, note: 'Tài khoản sở hữu token']
+  "token_hash" VARCHAR(255) [unique, not null, note: 'Hash của refresh token, không lưu plain token']
+  "expires_at" TIMESTAMP [not null, note: 'Thời điểm hết hạn']
+  "revoked_at" TIMESTAMP [note: 'Thời điểm bị thu hồi']
+  "replaced_by_token_hash" VARCHAR(255) [note: 'Hash token mới thay thế khi rotate']
+  "ip_address" VARCHAR(45) [note: 'IP đăng nhập']
+  "user_agent" TEXT [note: 'Thiết bị/trình duyệt']
+  "created_at" TIMESTAMP [not null, default: `CURRENT_TIMESTAMP`]
+
+  Indexes {
+    (user_id)
+    (expires_at)
+  }
+}
+
+Table "PASSWORD_RESET_TOKEN" {
+  "id" BINARY(16) [pk, default: `UUID_TO_BIN(UUID())`]
+  "user_id" BINARY(16) [not null, note: 'Tài khoản yêu cầu reset']
+  "token_hash" VARCHAR(255) [unique, not null, note: 'Hash reset token']
+  "expires_at" TIMESTAMP [not null]
+  "used_at" TIMESTAMP [note: 'Đã sử dụng lúc nào']
+  "created_at" TIMESTAMP [not null, default: `CURRENT_TIMESTAMP`]
+
+  Indexes {
+    (user_id)
+    (expires_at)
+  }
+}
+
+// =======================
+// STUDENT
+// =======================
+
+Table "STUDENT" {
+  "id" BINARY(16) [pk, default: `UUID_TO_BIN(UUID())`, note: 'ID sinh viên']
+  "user_id" BINARY(16) [unique, note: 'Liên kết tài khoản đăng nhập nếu có']
+  "student_code" VARCHAR(20) [unique, not null, note: 'Mã sinh viên/MSSV']
+  "full_name" VARCHAR(100) [not null, note: 'Họ tên']
+  "date_of_birth" DATE [note: 'Ngày sinh']
+  "gender" STUDENT_gender_enum [not null, note: 'Giới tính']
+  "email" VARCHAR(100) [not null, note: 'Email sinh viên']
+  "phone" VARCHAR(20) [note: 'Số điện thoại']
+  "address" TEXT [note: 'Địa chỉ thường trú']
+  "class_name" VARCHAR(50) [note: 'Lớp học']
+  "major" VARCHAR(100) [note: 'Ngành học']
+  "department" VARCHAR(100) [note: 'Khoa/Viện']
+  "academic_year" VARCHAR(20) [note: 'Khóa học, ví dụ 2022-2026']
+  "is_freshman" BOOLEAN [not null, default: false, note: 'Có phải tân sinh viên hay không']
+  "residence_type" STUDENT_residence_type_enum [not null, default: 'NOT_RESIDING', note: 'Trạng thái cư trú hiện tại']
+  "created_at" TIMESTAMP [not null, default: `CURRENT_TIMESTAMP`, note: 'Ngày tạo hồ sơ']
+  "updated_at" TIMESTAMP [default: `CURRENT_TIMESTAMP`, note: 'Ngày cập nhật hồ sơ']
+
+  Indexes {
+    (email)
+    (gender)
+    (class_name)
+    (major)
+    (department)
+    (academic_year)
+    (residence_type)
+  }
+}
+
+// =======================
+// SEMESTER / RESIDENCE
+// =======================
+
+Table "SEMESTER" {
+  "id" BINARY(16) [pk, default: `UUID_TO_BIN(UUID())`, note: 'ID kỳ lưu trú']
+  "name" VARCHAR(100) [not null, note: 'Tên kỳ, ví dụ: Kỳ 1 2026-2027']
+  "term" SEMESTER_term_enum [not null, note: 'Kỳ 1, kỳ 2 hoặc kỳ hè']
+  "academic_year" VARCHAR(20) [not null, note: 'Năm học']
+  "start_date" DATE [not null, note: 'Ngày bắt đầu cư trú']
+  "end_date" DATE [not null, note: 'Ngày kết thúc cư trú']
+  "status" SEMESTER_status_enum [not null, default: 'PREPARING', note: 'Đang chuẩn bị / đang lưu trú / đã kết thúc']
+  "created_by" BINARY(16) [note: 'Cán bộ tạo kỳ']
+  "created_at" TIMESTAMP [not null, default: `CURRENT_TIMESTAMP`]
+  "updated_at" TIMESTAMP [default: `CURRENT_TIMESTAMP`]
+
+  Indexes {
+    (term, academic_year) [unique]
+    (status)
+    (start_date, end_date)
+  }
+}
+
+Table "RESIDENCE_RECORD" {
+  "id" BINARY(16) [pk, default: `UUID_TO_BIN(UUID())`, note: 'Hồ sơ lưu trú theo kỳ']
+  "student_id" BINARY(16) [not null, note: 'Sinh viên']
+  "semester_id" BINARY(16) [not null, note: 'Kỳ lưu trú']
+  "start_date" DATE [not null, note: 'Ngày bắt đầu lưu trú thực tế']
+  "end_date" DATE [note: 'Ngày kết thúc lưu trú thực tế']
+  "status" RESIDENCE_status_enum [not null, default: 'PREPARING', note: 'Trạng thái hồ sơ lưu trú']
+  "created_at" TIMESTAMP [not null, default: `CURRENT_TIMESTAMP`]
+  "updated_at" TIMESTAMP [default: `CURRENT_TIMESTAMP`]
+
+  Indexes {
+    (student_id, semester_id) [unique]
+    (semester_id)
+    (status)
+  }
+}
+
+// =======================
+// DORMITORY STRUCTURE
+// =======================
+
+Table "BUILDING" {
+  "id" BINARY(16) [pk, default: `UUID_TO_BIN(UUID())`, note: 'ID khu/dãy nhà']
+  "name" VARCHAR(50) [unique, not null, note: 'Tên khu nhà, ví dụ A, B, C']
+  "description" TEXT [note: 'Mô tả khu nhà']
+  "is_active" BOOLEAN [not null, default: true, note: 'Còn sử dụng hay không']
+  "created_at" TIMESTAMP [not null, default: `CURRENT_TIMESTAMP`]
+  "updated_at" TIMESTAMP [default: `CURRENT_TIMESTAMP`]
+}
+
+Table "FLOOR" {
+  "id" BINARY(16) [pk, default: `UUID_TO_BIN(UUID())`, note: 'ID tầng']
+  "building_id" BINARY(16) [not null, note: 'Thuộc khu/dãy nhà']
+  "floor_number" INT [not null, note: 'Số tầng']
+  "description" TEXT [note: 'Mô tả tầng']
+
+  Indexes {
+    (building_id, floor_number) [unique]
+  }
+}
+
+Table "ROOM" {
+  "id" BINARY(16) [pk, default: `UUID_TO_BIN(UUID())`, note: 'ID phòng']
+  "floor_id" BINARY(16) [not null, note: 'Thuộc tầng']
+  "room_number" VARCHAR(20) [not null, note: 'Số phòng, ví dụ 101']
+  "capacity" INT [not null, default: 8, note: 'Sức chứa tối đa']
+  "gender_type" ROOM_gender_type_enum [not null, note: 'Phòng nam hoặc nữ']
+  "status" ROOM_status_enum [not null, default: 'ACTIVE', note: 'Trạng thái phòng']
+  "is_freshman_priority" BOOLEAN [not null, default: false, note: 'Phòng ưu tiên cho tân sinh viên']
+  "created_at" TIMESTAMP [not null, default: `CURRENT_TIMESTAMP`]
+  "updated_at" TIMESTAMP [default: `CURRENT_TIMESTAMP`]
+
+  Indexes {
+    (floor_id, room_number) [unique]
+    (gender_type)
+    (status)
+    (is_freshman_priority)
+  }
+}
+
+Table "BED" {
+  "id" BINARY(16) [pk, default: `UUID_TO_BIN(UUID())`, note: 'ID giường']
+  "room_id" BINARY(16) [not null, note: 'Thuộc phòng']
+  "bed_number" VARCHAR(20) [not null, note: 'Ký hiệu giường, ví dụ G1']
+  "status" BED_status_enum [not null, default: 'AVAILABLE', note: 'Trạng thái vật lý hiện tại của giường']
+  "created_at" TIMESTAMP [not null, default: `CURRENT_TIMESTAMP`]
+  "updated_at" TIMESTAMP [default: `CURRENT_TIMESTAMP`]
+
+  Indexes {
+    (room_id, bed_number) [unique]
+    (status)
+  }
+}
+
+// =======================
+// ROOM ASSIGNMENT
+// =======================
+
+Table "ROOM_ASSIGNMENT" {
+  "id" BINARY(16) [pk, default: `UUID_TO_BIN(UUID())`, note: 'ID xếp phòng/giường']
+  "residence_record_id" BINARY(16) [not null, note: 'Hồ sơ lưu trú tương ứng']
+  "student_id" BINARY(16) [not null, note: 'Sinh viên được xếp']
+  "semester_id" BINARY(16) [not null, note: 'Kỳ lưu trú']
+  "room_id" BINARY(16) [not null, note: 'Phòng được xếp']
+  "bed_id" BINARY(16) [not null, note: 'Giường được xếp']
+  "assigned_by" BINARY(16) [note: 'Cán bộ xếp phòng']
+  "assigned_at" TIMESTAMP [not null, default: `CURRENT_TIMESTAMP`, note: 'Thời điểm xếp phòng']
+  "status" ROOM_ASSIGNMENT_status_enum [not null, default: 'ACTIVE', note: 'Trạng thái xếp phòng']
+  "student_snapshot" JSON [note: 'Snapshot thông tin sinh viên tại thời điểm xếp phòng']
+  "room_snapshot" JSON [note: 'Snapshot khu/tầng/phòng/giường tại thời điểm xếp phòng']
+
+  Indexes {
+    (student_id, semester_id) [unique]
+    (bed_id, semester_id) [unique]
+    (room_id, semester_id)
+    (semester_id)
+    (status)
+  }
+}
+
+// =======================
+// REGULATION
+// =======================
+
+Table "REGULATION" {
+  "id" BINARY(16) [pk, default: `UUID_TO_BIN(UUID())`, note: 'ID nội quy']
+  "title" VARCHAR(255) [not null, note: 'Tiêu đề nội quy']
+  "content" TEXT [not null, note: 'Nội dung chi tiết']
+  "status" REGULATION_status_enum [not null, default: 'DRAFT', note: 'Nháp / đã công bố / lưu trữ']
+  "created_by" BINARY(16) [note: 'Người tạo']
+  "published_by" BINARY(16) [note: 'Người công bố']
+  "published_at" TIMESTAMP [note: 'Thời điểm công bố']
+  "created_at" TIMESTAMP [not null, default: `CURRENT_TIMESTAMP`]
+  "updated_at" TIMESTAMP [default: `CURRENT_TIMESTAMP`]
+
+  Indexes {
+    (status)
+  }
+}
+
+// =======================
+// NOTIFICATION
+// =======================
+
+Table "NOTIFICATION" {
+  "id" BINARY(16) [pk, default: `UUID_TO_BIN(UUID())`, note: 'ID thông báo']
+  "title" VARCHAR(255) [not null, note: 'Tiêu đề']
+  "content" TEXT [not null, note: 'Nội dung chi tiết']
+  "scope" NOTIFICATION_scope_enum [not null, default: 'GENERAL', note: 'Thông báo chung hoặc riêng']
+  "type" NOTIFICATION_type_enum [not null, default: 'GENERAL', note: 'Phân loại thông báo']
+  "created_by" BINARY(16) [note: 'Người tạo thông báo']
+  "created_at" TIMESTAMP [not null, default: `CURRENT_TIMESTAMP`, note: 'Ngày tạo']
+
+  Indexes {
+    (scope)
+    (type)
+    (created_at)
+  }
+}
+
+Table "NOTIFICATION_RECEIVER" {
+  "id" BINARY(16) [pk, default: `UUID_TO_BIN(UUID())`]
+  "notification_id" BINARY(16) [not null, note: 'ID thông báo']
+  "student_id" BINARY(16) [not null, note: 'Sinh viên nhận']
+  "is_read" BOOLEAN [not null, default: false, note: 'Đã đọc chưa']
+  "read_at" TIMESTAMP [note: 'Thời gian đọc']
+
+  Indexes {
+    (notification_id, student_id) [unique]
+    (student_id, is_read)
+  }
+}
+
+// =======================
+// STUDENT REQUEST
+// =======================
+
+Table "STUDENT_REQUEST" {
+  "id" BINARY(16) [pk, default: `UUID_TO_BIN(UUID())`, note: 'ID đơn từ']
+  "student_id" BINARY(16) [not null, note: 'Sinh viên gửi đơn']
+  "type" REQUEST_type_enum [not null, note: 'Loại đơn']
+  "title" VARCHAR(255) [not null, note: 'Tiêu đề đơn']
+  "content" TEXT [not null, note: 'Nội dung chi tiết']
+  "status" REQUEST_status_enum [not null, default: 'PENDING', note: 'Trạng thái xử lý']
+  "manager_note" TEXT [note: 'Phản hồi/ghi chú từ cán bộ']
+  "processed_by" BINARY(16) [note: 'Cán bộ xử lý']
+  "processed_at" TIMESTAMP [note: 'Thời điểm xử lý']
+  "created_at" TIMESTAMP [not null, default: `CURRENT_TIMESTAMP`, note: 'Ngày gửi']
+  "updated_at" TIMESTAMP [default: `CURRENT_TIMESTAMP`]
+
+  Indexes {
+    (student_id)
+    (type)
+    (status)
+    (created_at)
+  }
+}
+
+// =======================
+// VIOLATION
+// =======================
+
+Table "VIOLATION" {
+  "id" BINARY(16) [pk, default: `UUID_TO_BIN(UUID())`, note: 'ID vi phạm']
+  "student_id" BINARY(16) [not null, note: 'Sinh viên vi phạm']
+  "semester_id" BINARY(16) [note: 'Kỳ lưu trú xảy ra vi phạm']
+  "description" TEXT [not null, note: 'Mô tả hành vi vi phạm']
+  "penalty" VARCHAR(255) [note: 'Hình thức xử lý/hình phạt']
+  "violation_date" DATE [not null, note: 'Ngày xảy ra vi phạm']
+  "status" VIOLATION_status_enum [not null, default: 'RECORDED', note: 'Trạng thái xử lý vi phạm']
+  "created_by" BINARY(16) [note: 'Người ghi nhận']
+  "created_at" TIMESTAMP [not null, default: `CURRENT_TIMESTAMP`]
+  "updated_at" TIMESTAMP [default: `CURRENT_TIMESTAMP`]
+
+  Indexes {
+    (student_id)
+    (semester_id)
+    (status)
+    (violation_date)
+  }
+}
+
+// =======================
+// UTILITY USAGE & BILLING
+// =======================
+
+Table "UTILITY_USAGE" {
+  "id" BINARY(16) [pk, default: `UUID_TO_BIN(UUID())`, note: 'ID chỉ số điện nước']
+  "room_id" BINARY(16) [not null, note: 'Phòng']
+  "month" INT [not null, note: 'Tháng lưu trú']
+  "year" INT [not null, note: 'Năm']
+  "old_electricity" DECIMAL(12,2) [not null, default: 0, note: 'Chỉ số điện cũ']
+  "new_electricity" DECIMAL(12,2) [not null, note: 'Chỉ số điện mới']
+  "old_water" DECIMAL(12,2) [not null, default: 0, note: 'Chỉ số nước cũ']
+  "new_water" DECIMAL(12,2) [not null, note: 'Chỉ số nước mới']
+  "recorded_by" BINARY(16) [note: 'Người ghi nhận']
+  "recorded_at" TIMESTAMP [not null, default: `CURRENT_TIMESTAMP`, note: 'Ngày ghi số']
+
+  Indexes {
+    (room_id, month, year) [unique]
+    (year, month)
+  }
+}
+
+Table "UTILITY_BILL" {
+  "id" BINARY(16) [pk, default: `UUID_TO_BIN(UUID())`, note: 'ID hóa đơn điện nước']
+  "room_id" BINARY(16) [not null, note: 'Phòng thanh toán']
+  "semester_id" BINARY(16) [note: 'Kỳ lưu trú']
+  "usage_id" BINARY(16) [unique, note: 'Chỉ số điện nước dùng để tạo hóa đơn']
+  "month" INT [not null, note: 'Tháng hóa đơn']
+  "year" INT [not null, note: 'Năm hóa đơn']
+  "electricity_usage" DECIMAL(12,2) [not null, default: 0, note: 'Số kWh tiêu thụ']
+  "water_usage" DECIMAL(12,2) [not null, default: 0, note: 'Số m3 nước tiêu thụ']
+  "electricity_cost" DECIMAL(12,2) [not null, default: 0, note: 'Tiền điện sau VAT']
+  "water_cost" DECIMAL(12,2) [not null, default: 0, note: 'Tiền nước']
+  "vat_amount" DECIMAL(12,2) [not null, default: 0, note: 'Thuế GTGT tiền điện']
+  "total_cost" DECIMAL(12,2) [not null, default: 0, note: 'Tổng tiền cần nộp']
+  "status" BILL_status_enum [not null, default: 'UNPAID', note: 'Trạng thái thanh toán']
+  "due_date" DATE [not null, note: 'Hạn thanh toán']
+  "payment_date" TIMESTAMP [note: 'Ngày thanh toán thực tế']
+  "price_config_snapshot" JSON [note: 'Snapshot giá điện/nước tại thời điểm tạo hóa đơn']
+  "room_member_snapshot" JSON [note: 'Snapshot danh sách thành viên phòng khi tạo hóa đơn']
+  "created_by" BINARY(16) [note: 'Người tạo hóa đơn']
+  "created_at" TIMESTAMP [not null, default: `CURRENT_TIMESTAMP`, note: 'Ngày tạo']
+  "updated_at" TIMESTAMP [default: `CURRENT_TIMESTAMP`]
+
+  Indexes {
+    (room_id, month, year) [unique]
+    (semester_id)
+    (status)
+    (due_date)
+  }
+}
+
+Table "UTILITY_BILL_MEMBER" {
+  "id" BINARY(16) [pk, default: `UUID_TO_BIN(UUID())`, note: 'Trạng thái hóa đơn theo từng sinh viên trong phòng']
+  "bill_id" BINARY(16) [not null, note: 'Hóa đơn']
+  "student_id" BINARY(16) [not null, note: 'Thành viên phòng']
+  "amount_share" DECIMAL(12,2) [note: 'Số tiền chia cho sinh viên nếu cần hiển thị']
+  "status" BILL_MEMBER_status_enum [not null, default: 'UNPAID', note: 'Trạng thái thanh toán của sinh viên']
+  "paid_at" TIMESTAMP [note: 'Thời điểm được ghi nhận đã thanh toán']
+
+  Indexes {
+    (bill_id, student_id) [unique]
+    (student_id, status)
+  }
+}
+
+// =======================
+// PAYMENT: VNPAY / CASH
+// =======================
+
+Table "PAYMENT" {
+  "id" BINARY(16) [pk, default: `UUID_TO_BIN(UUID())`, note: 'ID giao dịch thanh toán']
+  "bill_id" BINARY(16) [not null, note: 'Hóa đơn được thanh toán']
+  "student_id" BINARY(16) [note: 'Sinh viên/người đại diện thanh toán nếu có']
+  "method" PAYMENT_method_enum [not null, note: 'VNPay hoặc tiền mặt']
+  "amount" DECIMAL(12,2) [not null, note: 'Số tiền thanh toán']
+  "status" PAYMENT_status_enum [not null, default: 'PENDING', note: 'Trạng thái giao dịch']
+
+  "vnp_txn_ref" VARCHAR(100) [unique, note: 'Mã giao dịch VNPay do hệ thống tạo']
+  "vnp_transaction_no" VARCHAR(100) [note: 'Mã giao dịch từ VNPay']
+  "vnp_response_code" VARCHAR(20) [note: 'Mã phản hồi VNPay']
+  "vnp_pay_date" VARCHAR(20) [note: 'Thời gian thanh toán từ VNPay']
+  "vnp_secure_hash" VARCHAR(255) [note: 'Secure hash VNPay']
+  "vnp_raw_data" JSON [note: 'Toàn bộ dữ liệu callback/return từ VNPay']
+
+  "cash_confirmed_by" BINARY(16) [note: 'Cán bộ xác nhận nếu thanh toán tiền mặt']
+  "paid_at" TIMESTAMP [note: 'Thời điểm thanh toán thành công']
+  "created_at" TIMESTAMP [not null, default: `CURRENT_TIMESTAMP`]
+  "updated_at" TIMESTAMP [default: `CURRENT_TIMESTAMP`]
+
+  Indexes {
+    (bill_id)
+    (student_id)
+    (method)
+    (status)
+  }
+}
+
+// =======================
+// CONFIGS
+// =======================
+
+Table "SYSTEM_CONFIG" {
+  "id" BINARY(16) [pk, default: `UUID_TO_BIN(UUID())`, note: 'ID cấu hình']
+  "config_key" VARCHAR(100) [unique, not null, note: 'Khóa cấu hình']
+  "config_value" TEXT [not null, note: 'Giá trị cấu hình']
+  "value_type" CONFIG_value_type_enum [not null, default: 'STRING', note: 'Kiểu dữ liệu']
+  "description" TEXT [note: 'Mô tả cấu hình']
+  "updated_by" BINARY(16) [note: 'Người cập nhật']
+  "created_at" TIMESTAMP [not null, default: `CURRENT_TIMESTAMP`]
+  "updated_at" TIMESTAMP [default: `CURRENT_TIMESTAMP`]
+}
+
+Table "ELECTRIC_PRICE_TIER" {
+  "id" BINARY(16) [pk, default: `UUID_TO_BIN(UUID())`, note: 'ID bậc giá điện']
+  "tier_order" INT [not null, note: 'Thứ tự bậc']
+  "from_kwh" DECIMAL(12,2) [not null, note: 'Từ kWh']
+  "to_kwh" DECIMAL(12,2) [note: 'Đến kWh, null nếu không giới hạn']
+  "unit_price" DECIMAL(12,2) [not null, note: 'Đơn giá VNĐ/kWh']
+  "is_active" BOOLEAN [not null, default: true, note: 'Còn áp dụng không']
+  "created_at" TIMESTAMP [not null, default: `CURRENT_TIMESTAMP`]
+  "updated_at" TIMESTAMP [default: `CURRENT_TIMESTAMP`]
+
+  Indexes {
+    (tier_order) [unique]
+    (is_active)
+  }
+}
+
+// =======================
+// EXCEL IMPORT
+// =======================
+
+Table "IMPORT_BATCH" {
+  "id" BINARY(16) [pk, default: `UUID_TO_BIN(UUID())`, note: 'ID lần import Excel']
+  "semester_id" BINARY(16) [not null, note: 'Kỳ lưu trú được import']
+  "file_name" VARCHAR(255) [note: 'Tên file Excel']
+  "total_rows" INT [not null, default: 0, note: 'Tổng số dòng']
+  "success_rows" INT [not null, default: 0, note: 'Số dòng thành công']
+  "failed_rows" INT [not null, default: 0, note: 'Số dòng lỗi']
+  "status" IMPORT_status_enum [not null, default: 'PENDING', note: 'Trạng thái import']
+  "error_message" TEXT [note: 'Lỗi tổng quát nếu rollback']
+  "imported_by" BINARY(16) [note: 'Người import']
+  "created_at" TIMESTAMP [not null, default: `CURRENT_TIMESTAMP`]
+  "finished_at" TIMESTAMP [note: 'Thời điểm hoàn tất']
+
+  Indexes {
+    (semester_id)
+    (status)
+    (created_at)
+  }
+}
+
+Table "IMPORT_ROW_ERROR" {
+  "id" BINARY(16) [pk, default: `UUID_TO_BIN(UUID())`, note: 'ID lỗi dòng import']
+  "import_batch_id" BINARY(16) [not null, note: 'Thuộc lần import']
+  "row_number" INT [not null, note: 'Số dòng trong Excel']
+  "field_name" VARCHAR(100) [note: 'Tên cột lỗi']
+  "error_message" TEXT [not null, note: 'Chi tiết lỗi']
+  "raw_data" JSON [note: 'Dữ liệu dòng lỗi']
+
+  Indexes {
+    (import_batch_id)
+    (row_number)
+  }
+}
+
+// =======================
+// LOGGING / EMAIL
+// =======================
+
+Table "EMAIL_LOG" {
+  "id" BINARY(16) [pk, default: `UUID_TO_BIN(UUID())`, note: 'ID log email']
+  "recipient_email" VARCHAR(100) [not null, note: 'Email người nhận']
+  "subject" VARCHAR(255) [not null, note: 'Tiêu đề email']
+  "content" TEXT [not null, note: 'Nội dung email']
+  "status" EMAIL_status_enum [not null, default: 'PENDING', note: 'Trạng thái gửi']
+  "error_message" TEXT [note: 'Lỗi nếu gửi thất bại']
+  "retry_count" INT [not null, default: 0, note: 'Số lần gửi lại']
+  "sent_at" TIMESTAMP [note: 'Thời điểm gửi thành công']
+  "created_at" TIMESTAMP [not null, default: `CURRENT_TIMESTAMP`]
+
+  Indexes {
+    (recipient_email)
+    (status)
+    (created_at)
+  }
+}
+
+Table "ACTIVITY_LOG" {
+  "id" BINARY(16) [pk, default: `UUID_TO_BIN(UUID())`, note: 'ID log']
+  "user_id" BINARY(16) [note: 'Người thực hiện hành động']
+  "action" VARCHAR(255) [not null, note: 'Hành động, ví dụ IMPORT_STUDENT, AUTO_ASSIGN_ROOM']
+  "entity_name" VARCHAR(100) [note: 'Tên bảng/entity bị tác động']
+  "entity_id" BINARY(16) [note: 'ID bản ghi bị tác động nếu có']
+  "description" TEXT [note: 'Chi tiết thao tác dễ hiểu']
+  "old_value" JSON [note: 'Dữ liệu cũ nếu cần']
+  "new_value" JSON [note: 'Dữ liệu mới nếu cần']
+  "ip_address" VARCHAR(45) [note: 'Địa chỉ IP người dùng']
+  "created_at" TIMESTAMP [not null, default: `CURRENT_TIMESTAMP`, note: 'Thời gian ghi log']
+
+  Indexes {
+    (user_id)
+    (action)
+    (entity_name)
+    (created_at)
+  }
+}
+
+// =======================
+// REFERENCES
+// =======================
+
+// Auth / RBAC
+Ref "fk_role_permission_permission": "PERMISSION"."id" < "ROLE_PERMISSION"."permission_id" [update: cascade, delete: cascade]
+Ref "fk_refresh_token_user": "USER"."id" < "REFRESH_TOKEN"."user_id" [update: cascade, delete: cascade]
+Ref "fk_password_reset_user": "USER"."id" < "PASSWORD_RESET_TOKEN"."user_id" [update: cascade, delete: cascade]
+
+// Student
+Ref "fk_student_user": "USER"."id" - "STUDENT"."user_id" [update: cascade, delete: set null]
+
+// Semester
+Ref "fk_semester_created_by": "USER"."id" < "SEMESTER"."created_by" [update: cascade, delete: set null]
+Ref "fk_residence_student": "STUDENT"."id" < "RESIDENCE_RECORD"."student_id" [update: cascade, delete: cascade]
+Ref "fk_residence_semester": "SEMESTER"."id" < "RESIDENCE_RECORD"."semester_id" [update: cascade, delete: cascade]
+
+// Dormitory
+Ref "fk_floor_building": "BUILDING"."id" < "FLOOR"."building_id" [update: cascade, delete: cascade]
+Ref "fk_room_floor": "FLOOR"."id" < "ROOM"."floor_id" [update: cascade, delete: cascade]
+Ref "fk_bed_room": "ROOM"."id" < "BED"."room_id" [update: cascade, delete: cascade]
+
+// Room assignment
+Ref "fk_assignment_residence": "RESIDENCE_RECORD"."id" - "ROOM_ASSIGNMENT"."residence_record_id" [update: cascade, delete: cascade]
+Ref "fk_assignment_student": "STUDENT"."id" < "ROOM_ASSIGNMENT"."student_id" [update: cascade, delete: cascade]
+Ref "fk_assignment_semester": "SEMESTER"."id" < "ROOM_ASSIGNMENT"."semester_id" [update: cascade, delete: cascade]
+Ref "fk_assignment_room": "ROOM"."id" < "ROOM_ASSIGNMENT"."room_id" [update: cascade, delete: cascade]
+Ref "fk_assignment_bed": "BED"."id" < "ROOM_ASSIGNMENT"."bed_id" [update: cascade, delete: cascade]
+Ref "fk_assignment_user": "USER"."id" < "ROOM_ASSIGNMENT"."assigned_by" [update: cascade, delete: set null]
+
+// Regulation
+Ref "fk_regulation_created_by": "USER"."id" < "REGULATION"."created_by" [update: cascade, delete: set null]
+Ref "fk_regulation_published_by": "USER"."id" < "REGULATION"."published_by" [update: cascade, delete: set null]
+
+// Notification
+Ref "fk_notification_user": "USER"."id" < "NOTIFICATION"."created_by" [update: cascade, delete: set null]
+Ref "fk_receiver_notification": "NOTIFICATION"."id" < "NOTIFICATION_RECEIVER"."notification_id" [update: cascade, delete: cascade]
+Ref "fk_receiver_student": "STUDENT"."id" < "NOTIFICATION_RECEIVER"."student_id" [update: cascade, delete: cascade]
+
+// Request
+Ref "fk_request_student": "STUDENT"."id" < "STUDENT_REQUEST"."student_id" [update: cascade, delete: cascade]
+Ref "fk_request_processed_by": "USER"."id" < "STUDENT_REQUEST"."processed_by" [update: cascade, delete: set null]
+
+// Violation
+Ref "fk_violation_student": "STUDENT"."id" < "VIOLATION"."student_id" [update: cascade, delete: cascade]
+Ref "fk_violation_semester": "SEMESTER"."id" < "VIOLATION"."semester_id" [update: cascade, delete: set null]
+Ref "fk_violation_user": "USER"."id" < "VIOLATION"."created_by" [update: cascade, delete: set null]
+
+// Utility usage and bill
+Ref "fk_usage_room": "ROOM"."id" < "UTILITY_USAGE"."room_id" [update: cascade, delete: cascade]
+Ref "fk_usage_user": "USER"."id" < "UTILITY_USAGE"."recorded_by" [update: cascade, delete: set null]
+
+Ref "fk_bill_room": "ROOM"."id" < "UTILITY_BILL"."room_id" [update: cascade, delete: cascade]
+Ref "fk_bill_semester": "SEMESTER"."id" < "UTILITY_BILL"."semester_id" [update: cascade, delete: set null]
+Ref "fk_bill_usage": "UTILITY_USAGE"."id" - "UTILITY_BILL"."usage_id" [update: cascade, delete: set null]
+Ref "fk_bill_created_by": "USER"."id" < "UTILITY_BILL"."created_by" [update: cascade, delete: set null]
+
+Ref "fk_bill_member_bill": "UTILITY_BILL"."id" < "UTILITY_BILL_MEMBER"."bill_id" [update: cascade, delete: cascade]
+Ref "fk_bill_member_student": "STUDENT"."id" < "UTILITY_BILL_MEMBER"."student_id" [update: cascade, delete: cascade]
+
+// Payment
+Ref "fk_payment_bill": "UTILITY_BILL"."id" < "PAYMENT"."bill_id" [update: cascade, delete: cascade]
+Ref "fk_payment_student": "STUDENT"."id" < "PAYMENT"."student_id" [update: cascade, delete: set null]
+Ref "fk_payment_cash_user": "USER"."id" < "PAYMENT"."cash_confirmed_by" [update: cascade, delete: set null]
+
+// Config
+Ref "fk_config_updated_by": "USER"."id" < "SYSTEM_CONFIG"."updated_by" [update: cascade, delete: set null]
+
+// Import
+Ref "fk_import_batch_semester": "SEMESTER"."id" < "IMPORT_BATCH"."semester_id" [update: cascade, delete: cascade]
+Ref "fk_import_batch_user": "USER"."id" < "IMPORT_BATCH"."imported_by" [update: cascade, delete: set null]
+Ref "fk_import_row_error_batch": "IMPORT_BATCH"."id" < "IMPORT_ROW_ERROR"."import_batch_id" [update: cascade, delete: cascade]
+
+// Log
+Ref "fk_log_user": "USER"."id" < "ACTIVITY_LOG"."user_id" [update: cascade, delete: set null]
