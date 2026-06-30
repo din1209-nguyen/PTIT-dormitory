@@ -1,0 +1,52 @@
+{
+  "name": "backend",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "tsx watch src/server.ts",
+    "build": "tsc",
+    "start": "node dist/server.js",
+    "lint": "eslint src/ --ext .ts",
+    "typecheck": "tsc --noEmit",
+    "seed:permissions": "tsx src/scripts/seedPermissions.ts",
+    "seed:users": "tsx src/scripts/seedUsers.ts",
+    "seed:configs": "tsx src/scripts/seedConfigs.ts",
+    "seed:dormitory": "tsx src/scripts/seedDormitory.ts",
+    "seed:electric": "tsx src/scripts/seedElectricTiers.ts",
+    "seed:reset": "tsx src/scripts/resetAndSeed.ts",
+    "seed": "tsx src/scripts/seedPermissions.ts && tsx src/scripts/seedUsers.ts && tsx src/scripts/seedConfigs.ts && tsx src/scripts/seedDormitory.ts && tsx src/scripts/seedElectricTiers.ts"
+  },
+  "dependencies": {
+    "@types/multer": "^2.1.0",
+    "bcrypt": "^6.0.0",
+    "cookie-parser": "^1.4.7",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "exceljs": "^3.4.0",
+    "express": "^4.21.2",
+    "express-rate-limit": "^7.5.0",
+    "helmet": "^8.1.0",
+    "jsonwebtoken": "^9.0.3",
+    "mongoose": "^8.14.1",
+    "multer": "^2.2.0",
+    "node-cron": "^4.4.1",
+    "nodemailer": "^9.0.1",
+    "winston": "^3.17.0",
+    "xlsx": "^0.18.5",
+    "zod": "^3.24.4"
+  },
+  "devDependencies": {
+    "@types/bcrypt": "^6.0.0",
+    "@types/cookie-parser": "^1.4.8",
+    "@types/cors": "^2.8.18",
+    "@types/express": "^5.0.2",
+    "@types/jsonwebtoken": "^9.0.10",
+    "@types/node": "^22.15.0",
+    "@types/node-cron": "^3.0.11",
+    "@types/nodemailer": "^8.0.1",
+    "eslint": "^9.25.1",
+    "tsx": "^4.19.4",
+    "typescript": "^5.8.3",
+    "typescript-eslint": "^8.31.0"
+  }
+}
