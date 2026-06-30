@@ -52,11 +52,12 @@ export function useUpdateStudent() {
 export function useAddToWaitingList() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (data: string | { id: string, semesterId?: string }) => {
-      const id = typeof data === 'string' ? data : data.id;
-      const semesterId = typeof data === 'string' ? undefined : data.semesterId;
-      return apiClient.post(`/students/${id}/add-to-waiting-list`, semesterId ? { semesterId } : {});
-    },
+    mutationFn: (data: { id: string; semesterId?: string; registeredAt: string }) => (
+      apiClient.post(`/students/${data.id}/add-to-waiting-list`, {
+        semesterId: data.semesterId,
+        registeredAt: data.registeredAt,
+      })
+    ),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['students'] }),
   });
 }

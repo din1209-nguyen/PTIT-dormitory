@@ -73,14 +73,13 @@ export default function RoomPage() {
                   <div 
                     key={m._id} 
                     onClick={() => s && setSelectedRoommate(s as Student)}
-                    className={`flex items-center justify-between rounded-[var(--radius-sm)] px-4 py-2.5 text-sm border cursor-pointer hover:bg-bg-page/80 transition-colors ${
-                      isMe ? 'bg-primary/5 border-primary/20' : 'bg-bg-page border-border'
+                    className={`flex items-center justify-between rounded-[var(--radius-sm)] px-4 py-2.5 text-sm border cursor-pointer transition-all ${
+                      isMe ? 'bg-primary/10 border-primary shadow-sm hover:bg-primary/20' : 'bg-bg-page border-border hover:bg-bg-page/80'
                     }`}
                   >
                     <div className="flex items-center gap-2">
-                      <span className="font-semibold text-text-primary">{s?.studentCode}</span>
-                      <span className="text-text-secondary">{s?.fullName}</span>
-                      {isMe && <Badge value="ME" />}
+                      <span className={`font-semibold ${isMe ? 'text-primary' : 'text-text-primary'}`}>{s?.studentCode}</span>
+                      <span className={isMe ? 'font-medium text-primary/90' : 'text-text-secondary'}>{s?.fullName}</span>
                     </div>
                     <div className="flex items-center gap-2"><span className="text-xs text-text-secondary">{bed?.bedNumber || m.roomSnapshot?.bedNumber}</span><Badge value={s?.gender || ''} /></div>
                   </div>

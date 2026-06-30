@@ -56,6 +56,29 @@ function validateMajorCode(studentCode?: string, className?: string, major?: str
   }
 }
 
+function normalizePhone(value: unknown) {
+  const phone = String(value ?? '').trim();
+  return phone || undefined;
+}
+
+function normalizeAddress(value: unknown) {
+  const address = String(value ?? '').trim();
+  return address || undefined;
+}
+
+function parseRequiredRegisteredAt(value: unknown) {
+  if (value instanceof Date && !Number.isNaN(value.getTime())) return value;
+  const text = String(value ?? '').trim();
+  if (!text) {
+    throw new ValidationError('Ngày đăng ký là bắt buộc', [{ field: 'registeredAt', message: 'Bắt buộc' }]);
+  }
+  const registeredAt = new Date(text);
+  if (Number.isNaN(registeredAt.getTime())) {
+    throw new ValidationError('Ngày đăng ký không hợp lệ', [{ field: 'registeredAt', message: 'Phải là ngày hợp lệ' }]);
+  }
+  return registeredAt;
+}
+
 export async function getStudentStats() {
   const [total, residing, pending, inactive] = await Promise.all([
     Student.countDocuments(),
@@ -73,6 +96,19 @@ async function getFacultyList(): Promise<string[]> {
 }
 
 async function validateStudentBusinessData(data: Record<string, unknown>) {
+  const phone = normalizePhone(data.phone);
+  if (!phone) {
+    throw new ValidationError('Số điện thoại là bắt buộc', [{ field: 'phone', message: 'Bắt buộc' }]);
+  }
+  if (!/^(0\d{9}|\+84\d{9})$/.test(phone)) {
+    throw new ValidationError('Số điện thoại không hợp lệ', [{ field: 'phone', message: 'Phải có định dạng 0xxxxxxxxx hoặc +84xxxxxxxxx' }]);
+  }
+
+  const address = normalizeAddress(data.address);
+  if (!address || address.length < 5) {
+    throw new ValidationError('Địa chỉ phải có ít nhất 5 ký tự', [{ field: 'address', message: 'Bắt buộc và tối thiểu 5 ký tự' }]);
+  }
+
   if (data.department) {
     const faculties = await getFacultyList();
     if (faculties.length > 0 && !faculties.some((f) => sameText(f, data.department as string))) {
@@ -162,6 +198,9 @@ export async function registerStudentForPreparingSemester(
 
   const studentCode = String(data.studentCode || '').trim();
   const email = String(data.email || '').trim().toLowerCase();
+  const phone = normalizePhone(data.phone);
+  const address = normalizeAddress(data.address);
+  const registeredAt = parseRequiredRegisteredAt(data.registeredAt);
   if (!studentCode) throw new ValidationError('Mã sinh viên là bắt buộc', [{ field: 'studentCode', message: 'Bắt buộc' }]);
   if (!email) throw new ValidationError('Email là bắt buộc', [{ field: 'email', message: 'Bắt buộc' }]);
 
@@ -200,8 +239,8 @@ export async function registerStudentForPreparingSemester(
       dateOfBirth: data.dateOfBirth,
       gender: data.gender,
       email,
-      phone: data.phone,
-      address: data.address,
+      phone,
+      address,
       className: data.className,
       major: data.major,
       department: data.department,
@@ -245,6 +284,8 @@ export async function registerStudentForPreparingSemester(
 
     student.fullName = String(data.fullName || student.fullName);
     student.email = email;
+    student.phone = phone;
+    student.address = address;
     student.gender = data.gender as typeof student.gender;
     student.className = data.className as string | undefined;
     student.major = data.major as string | undefined;
@@ -264,7 +305,7 @@ export async function registerStudentForPreparingSemester(
     studentId: student._id,
     semesterId: semester._id,
     startDate: semester.startDate,
-    registeredAt: data.registeredAt instanceof Date ? data.registeredAt : new Date(),
+    registeredAt,
     status: semester.status === SemesterStatus.ACTIVE ? ResidenceStatus.ACTIVE : ResidenceStatus.PREPARING,
   }], { session });
 
@@ -306,6 +347,8 @@ export async function listStudents(pagination: PaginationQuery, filters: Student
       { studentCode: { $regex: pagination.keyword, $options: 'i' } },
       { fullName: { $regex: pagination.keyword, $options: 'i' } },
       { email: { $regex: pagination.keyword, $options: 'i' } },
+      { phone: { $regex: pagination.keyword, $options: 'i' } },
+      { address: { $regex: pagination.keyword, $options: 'i' } },
     ];
   }
 
@@ -368,6 +411,13 @@ export async function updateStudent(id: string, data: Record<string, unknown>) {
     if (dup) throw new AppError(409, 'Mã sinh viên đã tồn tại', ErrorCode.VALIDATION_ERROR, [{ field: 'studentCode', message: 'Đã được sử dụng' }]);
   }
 
+  if ('phone' in data) {
+    data.phone = normalizePhone(data.phone);
+  }
+  if ('address' in data) {
+    data.address = normalizeAddress(data.address);
+  }
+
   Object.assign(student, data);
   await student.save();
   return student;
@@ -383,7 +433,7 @@ export async function getResidenceHistory(studentId: string) {
     .lean();
 }
 
-export async function addToWaitingList(studentId: string, semesterId?: string) {
+export async function addToWaitingList(studentId: string, semesterId?: string, registeredAtValue?: unknown) {
   const student = await Student.findById(studentId);
   if (!student) throw new NotFoundError('Không tìm thấy sinh viên', ErrorCode.STUDENT_NOT_FOUND);
 
@@ -392,6 +442,7 @@ export async function addToWaitingList(studentId: string, semesterId?: string) {
   }
 
   const semester = await getRegistrationSemester(semesterId);
+  const registeredAt = parseRequiredRegisteredAt(registeredAtValue);
   const existingRecord = await ResidenceRecord.findOne({ studentId: student._id, semesterId: semester._id });
   if (existingRecord) {
     throw new AppError(409, 'Sinh viên đã có trong danh sách chờ của kỳ này', ErrorCode.VALIDATION_ERROR);
@@ -401,7 +452,7 @@ export async function addToWaitingList(studentId: string, semesterId?: string) {
     studentId: student._id,
     semesterId: semester._id,
     startDate: semester.startDate,
-    registeredAt: new Date(),
+    registeredAt,
     status: semester.status === SemesterStatus.ACTIVE ? ResidenceStatus.ACTIVE : ResidenceStatus.PREPARING,
   });
 

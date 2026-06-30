@@ -1,6 +1,7 @@
 'use client';
+
 import { useQuery } from '@tanstack/react-query';
-import { GraduationCap, Mail, Phone, MapPin, BookOpen, User, Shield } from 'lucide-react';
+import { GraduationCap, User, Loader2 } from 'lucide-react';
 import apiClient from '@/lib/api/apiClient';
 import { Card } from '@/components/common/Card';
 import { Badge } from '@/components/common/Badge';
@@ -11,23 +12,39 @@ import type { ApiResponse } from '@/types/api';
 function useMyStudent() {
   return useQuery({
     queryKey: ['students', 'me'],
-    queryFn: () => apiClient.get<ApiResponse<Student | null>>('/students/me').then(r => r.data.data),
+    queryFn: () => apiClient.get<ApiResponse<Student | null>>('/students/me').then(response => response.data.data),
   });
+}
+
+function InfoRow({ label, value, badge }: { label: string; value?: string; badge?: string }) {
+  return (
+    <div className="rounded-[var(--radius-sm)] border border-border bg-bg-card p-3">
+      <div className="mb-1 text-xs font-medium text-text-secondary">{label}</div>
+      <div className="break-words font-medium text-text-primary">
+        {badge ? <Badge value={badge} /> : value || 'Chưa cập nhật'}
+      </div>
+    </div>
+  );
 }
 
 export default function ProfilePage() {
   const { data: student, isLoading } = useMyStudent();
   const { data: assignments } = useRoomAssignmentsByStudent(student?._id || '');
-  const currentResidence = assignments?.find(a => a.status === 'ACTIVE');
+  const currentResidence = assignments?.find(assignment => assignment.status === 'ACTIVE');
 
-  if (isLoading) return <p className="py-8 text-center text-text-secondary">Đang tải...</p>;
-  if (!student) return (
-    <Card><p className="text-text-secondary">Chưa có hồ sơ sinh viên liên kết với tài khoản này.</p></Card>
-  );
+  if (isLoading) {
+    return <div className="flex justify-center py-8 text-text-secondary"><Loader2 className="w-6 h-6 animate-spin" /></div>;
+  }
+
+  if (!student) {
+    return (
+      <Card><p className="text-text-secondary">Chưa có hồ sơ sinh viên liên kết với tài khoản này.</p></Card>
+    );
+  }
 
   return (
     <div className="flex flex-col gap-6">
-      {/* Khung thông tin tổng quan */}
+      {/* Hiển thị thông tin tổng quan sinh viên */}
       <Card className="flex flex-col sm:flex-row items-center sm:items-start gap-6 p-6 relative">
         <div className="flex h-24 w-24 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
           <User size={48} />
@@ -60,68 +77,21 @@ export default function ProfilePage() {
         )}
       </Card>
 
-      {/* Chi tiết thông tin cá nhân */}
+      {/* Hiển thị thông tin cá nhân chi tiết */}
       <Card>
         <h2 className="mb-6 text-sm font-semibold uppercase tracking-wider text-text-secondary border-b border-border pb-3">
           Thông tin chi tiết
         </h2>
-        
-        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 md:grid-cols-3">
-          <div className="flex flex-col gap-1">
-            <div className="flex items-center gap-2 text-text-secondary mb-1">
-              <Mail size={16} />
-              <span className="text-xs font-medium">Email</span>
-            </div>
-            <span className="text-sm text-text-primary break-all">{student.email}</span>
-          </div>
 
-          <div className="flex flex-col gap-1">
-            <div className="flex items-center gap-2 text-text-secondary mb-1">
-              <Phone size={16} />
-              <span className="text-xs font-medium">Điện thoại</span>
-            </div>
-            <span className="text-sm text-text-primary">{student.phone || '—'}</span>
-          </div>
-
-          <div className="flex flex-col gap-1">
-            <div className="flex items-center gap-2 text-text-secondary mb-1">
-              <MapPin size={16} />
-              <span className="text-xs font-medium">Địa chỉ</span>
-            </div>
-            <span className="text-sm text-text-primary break-all">{student.address || '—'}</span>
-          </div>
-
-          <div className="flex flex-col gap-1">
-            <div className="flex items-center gap-2 text-text-secondary mb-1">
-              <BookOpen size={16} />
-              <span className="text-xs font-medium">Lớp</span>
-            </div>
-            <span className="text-sm text-text-primary">{student.className || '—'}</span>
-          </div>
-
-          <div className="flex flex-col gap-1">
-            <div className="flex items-center gap-2 text-text-secondary mb-1">
-              <BookOpen size={16} />
-              <span className="text-xs font-medium">Ngành</span>
-            </div>
-            <span className="text-sm text-text-primary">{student.major || '—'}</span>
-          </div>
-
-          <div className="flex flex-col gap-1">
-            <div className="flex items-center gap-2 text-text-secondary mb-1">
-              <BookOpen size={16} />
-              <span className="text-xs font-medium">Khoa</span>
-            </div>
-            <span className="text-sm text-text-primary">{student.department || '—'}</span>
-          </div>
-
-          <div className="flex flex-col gap-1">
-            <div className="flex items-center gap-2 text-text-secondary mb-1">
-              <GraduationCap size={16} />
-              <span className="text-xs font-medium">Khóa</span>
-            </div>
-            <span className="text-sm text-text-primary">{student.academicYear || '—'}</span>
-          </div>
+        <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3">
+          <InfoRow label="Giới tính" badge={student.gender} />
+          <InfoRow label="Email" value={student.email} />
+          <InfoRow label="Số điện thoại" value={student.phone} />
+          <InfoRow label="Địa chỉ" value={student.address} />
+          <InfoRow label="Khoa" value={student.department} />
+          <InfoRow label="Ngành" value={student.major} />
+          <InfoRow label="Lớp" value={student.className} />
+          <InfoRow label="Khóa" value={student.academicYear} />
         </div>
       </Card>
     </div>

@@ -20,11 +20,13 @@ const IMPORT_COLUMNS = [
   { key: 'fullName', label: 'Họ và tên', required: true },
   { key: 'gender', label: 'Giới tính', required: true },
   { key: 'email', label: 'Email', required: true },
+  { key: 'phone', label: 'Số điện thoại', aliases: ['Điện thoại', 'Phone', 'SDT', 'SĐT'], required: true },
+  { key: 'address', label: 'Địa chỉ', aliases: ['Dia chi', 'Address', 'Nơi ở', 'Noi o'], required: true },
   { key: 'className', label: 'Lớp', required: true },
   { key: 'major', label: 'Ngành', required: true },
   { key: 'academicYear', label: 'Khóa', required: true },
   { key: 'department', label: 'Khoa', required: true },
-  { key: 'registeredAt', label: 'Thời điểm đăng ký', aliases: ['Thời gian', 'Thời gian đăng ký', 'Ngày đăng ký'], required: false },
+  { key: 'registeredAt', label: 'Thời điểm đăng ký', aliases: ['Thời gian', 'Thời gian đăng ký', 'Ngày đăng ký'], required: true },
 ] as const;
 type ImportColumnKey = typeof IMPORT_COLUMNS[number]['key'];
 const REQUIRED_IMPORT_COLUMNS = IMPORT_COLUMNS.filter((column) => column.required);
@@ -36,6 +38,8 @@ interface ParsedRowManager {
   fullName: string;
   gender: Gender;
   email: string;
+  phone: string;
+  address: string;
   className: string;
   major: string;
   academicYear: string;
@@ -57,8 +61,6 @@ function normalizeHeader(value: string) {
     .replace(/[\u0300-\u036f]/g, '')
     .replace(/đ/g, 'd')
     .replace(/Đ/g, 'D')
-    .replace(/Ä‘/g, 'd')
-    .replace(/Ä/g, 'D')
     .toLowerCase()
     .replace(/\s+/g, ' ')
     .trim();
@@ -123,8 +125,8 @@ function parseDateValue(value: unknown): Date | null {
   return parseDateText(String(value));
 }
 
-function parseRegistrationTime(cell: ExcelJS.Cell, fallback: Date): { registeredAt: Date } | { error: string } {
-  if (!cell.value || !cellStr(cell)) return { registeredAt: fallback };
+function parseRegistrationTime(cell: ExcelJS.Cell): { registeredAt: Date } | { error: string } {
+  if (!cell.value || !cellStr(cell)) return { error: 'Thời điểm đăng ký là bắt buộc' };
   const registeredAt = parseDateValue(cell.value);
   return registeredAt ? { registeredAt } : { error: 'Thời điểm đăng ký không hợp lệ' };
 }
@@ -162,9 +164,6 @@ function mapHeaders(headerRow: ExcelJS.Row) {
     }
     required.set(column.key, index);
   }
-  const registeredAtColumn = IMPORT_COLUMNS.find((column) => column.key === 'registeredAt')!;
-  const registeredAtIndex = findHeaderIndex(indexes, registeredAtColumn);
-  if (registeredAtIndex) required.set('registeredAt', registeredAtIndex);
   return required;
 }
 
@@ -223,7 +222,6 @@ export async function importExcelAndAssign(
   const errors: RowError[] = [];
   const seenCodes = new Set<string>();
   const seenEmails = new Set<string>();
-  const importStartedAt = new Date();
   const registeredAtCol = headerMap.get('registeredAt');
 
   const candidateCodes = new Set<string>();
@@ -260,18 +258,17 @@ export async function importExcelAndAssign(
     const fullName = raw.fullName;
     const gender = parseGender(raw.gender);
     const email = raw.email.toLowerCase();
+    const phone = raw.phone;
+    const address = raw.address;
     const className = raw.className;
     const major = raw.major;
     const academicYear = raw.academicYear;
     const department = raw.department;
-    let registeredAt = importStartedAt;
+    let registeredAt: Date | null = null;
     if (registeredAtCol) {
-      const parsedRegistrationTime = parseRegistrationTime(row.getCell(registeredAtCol), importStartedAt);
-      if ('error' in parsedRegistrationTime) {
-        addErr('Thời điểm đăng ký', parsedRegistrationTime.error);
-      } else {
-        registeredAt = parsedRegistrationTime.registeredAt;
-      }
+      const parsedRegistrationTime = parseRegistrationTime(row.getCell(registeredAtCol));
+      if ('error' in parsedRegistrationTime) addErr('Thời điểm đăng ký', parsedRegistrationTime.error);
+      else registeredAt = parsedRegistrationTime.registeredAt;
     }
 
     if (!studentCode) addErr('Mã sinh viên', 'Bắt buộc');
@@ -279,6 +276,10 @@ export async function importExcelAndAssign(
     if (!gender) addErr('Giới tính', 'Phải là Nam/Nữ hoặc MALE/FEMALE');
     if (!email) addErr('Email', 'Bắt buộc');
     else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) addErr('Email', 'Sai định dạng');
+    if (!phone) addErr('Số điện thoại', 'Bắt buộc');
+    else if (!/^(0\d{9}|\+84\d{9})$/.test(phone)) addErr('Số điện thoại', 'Phải có định dạng 0xxxxxxxxx hoặc +84xxxxxxxxx');
+    if (!address) addErr('Địa chỉ', 'Bắt buộc');
+    else if (address.length < 5) addErr('Địa chỉ', 'Phải có ít nhất 5 ký tự');
     if (!className) addErr('Lớp', 'Bắt buộc');
     if (!major) addErr('Ngành', 'Bắt buộc');
     if (!academicYear) addErr('Khóa', 'Bắt buộc');
@@ -309,11 +310,13 @@ export async function importExcelAndAssign(
       fullName,
       gender: gender!,
       email,
+      phone,
+      address,
       className,
       major,
       academicYear,
       department,
-      registeredAt,
+      registeredAt: registeredAt!,
       action: !existingByCode ? 'CREATE_STUDENT' : existingByCode.userId ? 'RE_REGISTER' : 'CREATE_ACCOUNT',
     });
   }
@@ -372,6 +375,8 @@ export async function importExcelAndAssign(
         fullName: row.fullName,
         gender: row.gender,
         email: row.email,
+        phone: row.phone,
+        address: row.address,
         className: row.className,
         major: row.major,
         academicYear: row.academicYear,
@@ -415,7 +420,7 @@ export async function importExcelAndAssign(
     await batch.save();
 
     if (err instanceof AppError) throw err;
-    throw new AppError(500, `Import tháº¥t báº¡i: ${batch.errorMessage}`, ErrorCode.EXCEL_IMPORT_ROLLED_BACK);
+    throw new AppError(500, `Import thất bại: ${batch.errorMessage}`, ErrorCode.EXCEL_IMPORT_ROLLED_BACK);
   } finally {
     session.endSession();
   }
