@@ -21,14 +21,14 @@ export function RoomListTab() {
   });
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
-  
+
   const [selectedRoom, setSelectedRoom] = useState<any>(null);
   const [selectedStudent, setSelectedStudent] = useState<any>(null);
 
   const { data: buildings } = useBuildings();
   const { data: floors } = useFloors(filters.buildingId);
   const { data: rooms, isLoading } = useRoomsList(filters);
-  
+
   const { data: roomMembers } = useQuery({
     queryKey: ['room-members', selectedRoom?._id],
     queryFn: () => apiClient.get(`/room-assignments/rooms/${selectedRoom?._id}/members`).then(r => r.data.data),
@@ -55,7 +55,7 @@ export function RoomListTab() {
   const buildingOptions = [{ value: '', label: 'Tất cả dãy nhà' }].concat(
     (buildings || []).map((b: any) => ({ value: b._id, label: `Dãy ${b.name}` }))
   );
-  
+
   const floorOptions = [{ value: '', label: 'Tất cả tầng' }].concat(
     (floors || []).map((f: any) => ({ value: f._id, label: `Tầng ${f.floorNumber}` }))
   );
@@ -137,7 +137,7 @@ export function RoomListTab() {
         <div className="overflow-x-auto h-[calc(100vh-280px)] overflow-y-auto">
           {isLoading ? <div className="p-4"><TableSkeleton columns={6} rows={5} /></div> : (
             <table className="w-full text-sm">
-              <thead className="sticky top-0 bg-white">
+              <thead>
                 <tr className="border-b border-border text-left text-text-secondary bg-bg-page/50">
                   <th className="py-3 px-4 font-medium">Số phòng</th>
                   <th className="py-3 px-4 font-medium">Vị trí</th>
@@ -148,31 +148,35 @@ export function RoomListTab() {
                 </tr>
               </thead>
               <tbody>
-                {paginatedRooms.map((r: any) => (
-                  <tr key={r._id} onClick={() => setSelectedRoom(r)} className="border-b border-border last:border-0 cursor-pointer hover:bg-bg-page transition-colors">
-                    <td className="py-3 px-4 font-bold text-text-primary">{r.roomNumber}</td>
-                    <td className="py-3 px-4">
-                      {r.floorId?.buildingId?.name ? `Dãy ${r.floorId.buildingId.name}` : ''} - 
-                      {r.floorId?.floorNumber ? ` Tầng ${r.floorId.floorNumber}` : ''}
-                    </td>
-                    <td className="py-3 px-4">
-                      <span className="text-primary font-medium">{r.stats?.currentResidentCount || 0}</span>
-                      <span className="text-text-muted"> / {r.capacity}</span>
-                    </td>
-                    <td className="py-3 px-4"><Badge value={r.genderType} /></td>
-                    <td className="py-3 px-4">{r.isFreshmanPriority ? 'Có' : 'Không'}</td>
-                    <td className="py-3 px-4">
-                      <div className="flex flex-wrap gap-2">
-                        <Badge value={r.status} />
-                        {(r.stats?.currentResidentCount || 0) > 0 && (
-                          <span className="rounded-[var(--radius-pill)] border border-primary/20 bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary">
-                            Có sinh viên
-                          </span>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                ))}
+                {paginatedRooms.map((r: any) => {
+                  const hasStudents = (r.stats?.currentResidentCount || 0) > 0;
+                  return (
+                    <tr
+                      key={r._id}
+                      onClick={() => setSelectedRoom(r)}
+                      className={`border-b border-border last:border-0 cursor-pointer transition-colors ${hasStudents ? 'bg-primary/5 hover:bg-primary/10 border-l-[3px] border-l-primary' : 'hover:bg-bg-page'}`}
+                    >
+                      <td className={`py-3 px-4 font-bold ${hasStudents ? 'text-primary' : 'text-text-primary'}`}>
+                        {r.roomNumber}
+                      </td>
+                      <td className="py-3 px-4">
+                        {r.floorId?.buildingId?.name ? `Dãy ${r.floorId.buildingId.name}` : ''} -
+                        {r.floorId?.floorNumber ? ` Tầng ${r.floorId.floorNumber}` : ''}
+                      </td>
+                      <td className="py-3 px-4">
+                        <span className="text-primary font-medium">{r.stats?.currentResidentCount || 0}</span>
+                        <span className="text-text-muted"> / {r.capacity}</span>
+                      </td>
+                      <td className="py-3 px-4"><Badge value={r.genderType} /></td>
+                      <td className="py-3 px-4">{r.isFreshmanPriority ? 'Có' : 'Không'}</td>
+                      <td className="py-3 px-4">
+                        <div className="flex flex-wrap gap-2">
+                          <Badge value={r.status} />
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
                 {filteredRooms.length === 0 && (
                   <tr>
                     <td colSpan={6} className="py-8 text-center text-text-secondary">Không tìm thấy phòng phù hợp</td>

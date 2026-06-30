@@ -1,6 +1,7 @@
 import { toast } from 'sonner';
 import type { UtilityBill } from '@/types/utilityBilling';
 
+// Lấy nhãn phòng từ dữ liệu phòng đã populate hoặc id phòng
 export function getRoomLabel(room: UtilityBill['roomId'] | any) {
   if (!room) return '—';
   if (typeof room === 'string') return room;
@@ -9,24 +10,25 @@ export function getRoomLabel(room: UtilityBill['roomId'] | any) {
   return `${building?.name || ''}${room.roomNumber || ''}`;
 }
 
+// Chuyển số tiền thành chữ tiếng Việt
 export function docTien(so: number): string {
   if (so === 0) return "Không đồng chẵn.";
   const chuSo = ["không", "một", "hai", "ba", "bốn", "năm", "sáu", "bảy", "tám", "chín"];
   const donVi = ["", "nghìn", "triệu", "tỷ", "nghìn tỷ"];
   let str = Math.abs(so).toString();
-  let groups = [];
+  const groups = [];
   while (str.length > 0) {
     groups.push(str.slice(-3));
     str = str.slice(0, -3);
   }
-  let words = [];
+  const words = [];
   for (let i = 0; i < groups.length; i++) {
-    let num = parseInt(groups[i], 10);
+    const num = parseInt(groups[i], 10);
     if (num !== 0) {
-      let tram = Math.floor(num / 100);
-      let chuc = Math.floor((num % 100) / 10);
-      let donvi = num % 10;
-      let res = [];
+      const tram = Math.floor(num / 100);
+      const chuc = Math.floor((num % 100) / 10);
+      const donvi = num % 10;
+      const res = [];
       if (groups[i].length === 3 || (i < groups.length - 1 && groups[i].length > 0)) {
         res.push(chuSo[tram] + " trăm");
         if (chuc === 0 && donvi !== 0) res.push("lẻ");
@@ -47,10 +49,12 @@ export function docTien(so: number): string {
   return result + " đồng chẵn.";
 }
 
+// Định dạng số tiền theo chuẩn Việt Nam
 function formatMoney(n: number) {
   return n.toLocaleString('vi-VN') + ' đ';
 }
 
+// Tạo file PDF hóa đơn điện nước từ dữ liệu hóa đơn
 export function generatePDF(bill: any) {
   if (!bill) return;
   toast.info('Đang tạo hóa đơn PDF, vui lòng đợi...', { id: 'pdf-toast' });

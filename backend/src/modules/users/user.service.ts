@@ -50,7 +50,27 @@ export async function getById(id: string): Promise<Record<string, unknown>> {
   return user;
 }
 
-export async function create(data: { username: string; email: string; password: string; role: string; fullName?: string; gender?: string; className?: string; major?: string; academicYear?: string; department?: string; isFreshman?: boolean; }) {
+function normalizePhone(value: unknown) {
+  const phone = String(value ?? '').trim();
+  if (phone && !/^(0\d{9}|\+84\d{9})$/.test(phone)) {
+    throw new AppError(400, 'Số điện thoại phải có định dạng 0xxxxxxxxx hoặc +84xxxxxxxxx', ErrorCode.VALIDATION_ERROR);
+  }
+  return phone || undefined;
+}
+
+function normalizeRequiredPhone(value: unknown) {
+  const phone = normalizePhone(value);
+  if (!phone) throw new AppError(400, 'Số điện thoại là bắt buộc', ErrorCode.VALIDATION_ERROR);
+  return phone;
+}
+
+function normalizeRequiredAddress(value: unknown) {
+  const address = String(value ?? '').trim();
+  if (address.length < 5) throw new AppError(400, 'Địa chỉ phải có ít nhất 5 ký tự', ErrorCode.VALIDATION_ERROR);
+  return address;
+}
+
+export async function create(data: { username: string; email: string; password: string; role: string; fullName?: string; gender?: string; phone?: string; address?: string; className?: string; major?: string; academicYear?: string; department?: string; isFreshman?: boolean; }) {
   const existing = await User.findOne({ $or: [{ username: data.username }, { email: data.email }] });
   if (existing) throw new AppError(409, 'Username hoặc email đã tồn tại', ErrorCode.VALIDATION_ERROR);
 
@@ -76,6 +96,8 @@ export async function create(data: { username: string; email: string; password: 
         studentCode: data.username,
         fullName: data.fullName || data.username,
         email: data.email,
+        phone: normalizeRequiredPhone(data.phone),
+        address: normalizeRequiredAddress(data.address),
         gender: data.gender || 'MALE',
         department: data.department || '',
         academicYear: data.academicYear || '',
@@ -109,7 +131,7 @@ export async function update(id: string, data: { username?: string; email?: stri
 
   if (data.username && data.username !== user.username) {
     const existing = await User.findOne({ username: data.username });
-    if (existing) throw new AppError(409, 'Tên đăng nhập (Username) đã tồn tại', ErrorCode.VALIDATION_ERROR);
+    if (existing) throw new AppError(409, 'Tên đăng nhập Username đã tồn tại', ErrorCode.VALIDATION_ERROR);
     user.username = data.username;
   }
 
@@ -145,7 +167,7 @@ export async function lock(id: string) {
 
   // Không cho phép khóa tài khoản ADMIN
   if (user.role === Role.ADMIN) {
-    throw new AppError(403, 'Không thỉ khóa tài khoản Quản trị viên', ErrorCode.FORBIDDEN);
+    throw new AppError(403, 'Không thể khóa tài khoản Quản trị viên', ErrorCode.FORBIDDEN);
   }
 
   if (user.status === UserStatus.LOCKED) throw new AppError(400, 'Tài khoản đã bị khóa', ErrorCode.VALIDATION_ERROR);
@@ -163,9 +185,9 @@ export async function unlock(id: string) {
   const user = await User.findById(id);
   if (!user) throw new NotFoundError('Không tìm thấy người dùng', ErrorCode.USER_NOT_FOUND);
 
-  // Không cho phép mở khóa tài khoản ADMIN (ADMIN không bị khóa)
+  // Không cho phép mở khóa tài khoản ADMIN
   if (user.role === Role.ADMIN) {
-    throw new AppError(403, 'Không thỉ thực hiện thao tác này với tài khoản Quản trị viên', ErrorCode.FORBIDDEN);
+    throw new AppError(403, 'Không thể thực hiện thao tác này với tài khoản Quản trị viên', ErrorCode.FORBIDDEN);
   }
 
   if (user.status === UserStatus.ACTIVE) throw new AppError(400, 'Tài khoản đang hoạt động', ErrorCode.VALIDATION_ERROR);
@@ -194,6 +216,8 @@ export async function resetPassword(id: string, newPassword: string) {
 }
 
 const IMPORT_HEADERS = ['Username (Mã SV)', 'Họ và tên', 'Giới tính', 'Email', 'Mật khẩu', 'Role', 'Lớp', 'Ngành', 'Khóa', 'Khoa'];
+const IMPORT_HEADERS_WITH_PHONE = ['Username (Mã SV)', 'Họ và tên', 'Giới tính', 'Email', 'Số điện thoại', 'Mật khẩu', 'Role', 'Lớp', 'Ngành', 'Khóa', 'Khoa'];
+const IMPORT_HEADERS_WITH_CONTACT = ['Username (Mã SV)', 'Họ và tên', 'Giới tính', 'Email', 'Số điện thoại', 'Địa chỉ', 'Mật khẩu', 'Role', 'Lớp', 'Ngành', 'Khóa', 'Khoa'];
 const ALLOWED_ROLES = [Role.STUDENT, Role.MANAGER];
 
 interface ImportRowError {
@@ -216,14 +240,17 @@ export async function importUsersFromExcel(buffer: Buffer | ArrayBuffer | Uint8A
   if (!sheet) throw new AppError(400, 'File Excel trống', ErrorCode.EXCEL_INVALID_FORMAT);
 
   const headerRow = sheet.getRow(1);
-  for (let i = 0; i < IMPORT_HEADERS.length; i++) {
+  const hasPhoneColumn = cellStr(headerRow.getCell(5)) === 'Số điện thoại';
+  const hasContactColumns = hasPhoneColumn && cellStr(headerRow.getCell(6)) === 'Địa chỉ';
+  const expectedHeaders = hasContactColumns ? IMPORT_HEADERS_WITH_CONTACT : hasPhoneColumn ? IMPORT_HEADERS_WITH_PHONE : IMPORT_HEADERS;
+  for (let i = 0; i < expectedHeaders.length; i++) {
     const actual = cellStr(headerRow.getCell(i + 1));
-    if (actual !== IMPORT_HEADERS[i]) {
-      throw new AppError(400, `Header sai ở cột ${i + 1}: cần "${IMPORT_HEADERS[i]}", nhận "${actual}"`, ErrorCode.EXCEL_INVALID_FORMAT);
+    if (actual !== expectedHeaders[i]) {
+      throw new AppError(400, `Header sai ở cột ${i + 1}: cần "${expectedHeaders[i]}", nhận "${actual}"`, ErrorCode.EXCEL_INVALID_FORMAT);
     }
   }
 
-  const rows: { row: number; username: string; fullName: string; gender: Gender; email: string; password: string; role: string; className: string; major: string; academicYear: string; department: string; isFreshman: boolean }[] = [];
+  const rows: { row: number; username: string; fullName: string; gender: Gender; email: string; phone?: string; address?: string; password: string; role: string; className: string; major: string; academicYear: string; department: string; isFreshman: boolean }[] = [];
   const errors: ImportRowError[] = [];
   const seenUsernames = new Set<string>();
   const seenEmails = new Set<string>();
@@ -234,12 +261,15 @@ export async function importUsersFromExcel(buffer: Buffer | ArrayBuffer | Uint8A
     const fullName = cellStr(row.getCell(2));
     const genderStr = cellStr(row.getCell(3));
     const email = cellStr(row.getCell(4)).toLowerCase();
-    const password = cellStr(row.getCell(5));
-    const role = cellStr(row.getCell(6)).toUpperCase();
-    const className = cellStr(row.getCell(7));
-    const major = cellStr(row.getCell(8));
-    const academicYear = cellStr(row.getCell(9));
-    const department = cellStr(row.getCell(10));
+    const phone = hasPhoneColumn || hasContactColumns ? cellStr(row.getCell(5)) : '';
+    const address = hasContactColumns ? cellStr(row.getCell(6)) : '';
+    const offset = hasContactColumns ? 2 : hasPhoneColumn ? 1 : 0;
+    const password = cellStr(row.getCell(5 + offset));
+    const role = cellStr(row.getCell(6 + offset)).toUpperCase();
+    const className = cellStr(row.getCell(7 + offset));
+    const major = cellStr(row.getCell(8 + offset));
+    const academicYear = cellStr(row.getCell(9 + offset));
+    const department = cellStr(row.getCell(10 + offset));
 
     if (!username && !email) continue;
 
@@ -250,6 +280,7 @@ export async function importUsersFromExcel(buffer: Buffer | ArrayBuffer | Uint8A
     else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) addErr('Email', 'Sai định dạng');
     if (!password) addErr('Mật khẩu', 'Bắt buộc');
     else if (password.length < 6) addErr('Mật khẩu', 'Phải ít nhất 6 ký tự');
+    if (phone && !/^(0\d{9}|\+84\d{9})$/.test(phone)) addErr('Số điện thoại', 'Phải có định dạng 0xxxxxxxxx hoặc +84xxxxxxxxx');
 
     if (!role) addErr('Role', 'Bắt buộc');
     else if (!ALLOWED_ROLES.includes(role as Role)) addErr('Role', 'Chỉ cho phép STUDENT hoặc MANAGER');
@@ -264,6 +295,9 @@ export async function importUsersFromExcel(buffer: Buffer | ArrayBuffer | Uint8A
     let gender = Gender.MALE;
     if (role === Role.STUDENT) {
       if (!fullName) addErr('Họ và tên', 'Bắt buộc với sinh viên');
+      if (!phone) addErr('Số điện thoại', 'Bắt buộc với sinh viên');
+      if (!address) addErr('Địa chỉ', 'Bắt buộc với sinh viên');
+      else if (address.length < 5) addErr('Địa chỉ', 'Phải có ít nhất 5 ký tự');
       if (genderStr === 'Nam') gender = Gender.MALE;
       else if (genderStr === 'Nữ') gender = Gender.FEMALE;
       else addErr('Giới tính', 'Phải là "Nam" hoặc "Nữ"');
@@ -279,7 +313,7 @@ export async function importUsersFromExcel(buffer: Buffer | ArrayBuffer | Uint8A
     seenEmails.add(email);
 
     if (!errors.some(e => e.row === rowNum)) {
-      rows.push({ row: rowNum, username, fullName, gender, email, password, role, className, major, academicYear, department, isFreshman: false });
+      rows.push({ row: rowNum, username, fullName, gender, email, phone: normalizePhone(phone), address, password, role, className, major, academicYear, department, isFreshman: false });
     }
   }
 
@@ -304,7 +338,7 @@ export async function importUsersFromExcel(buffer: Buffer | ArrayBuffer | Uint8A
       errors.push({
         row: row.row,
         field: dup.username === row.username ? 'Username' : 'Email',
-        message: `Đã tồn tại trong hệ thống`,
+        message: 'Đã tồn tại trong hệ thống',
       });
     }
   }
@@ -334,6 +368,8 @@ export async function importUsersFromExcel(buffer: Buffer | ArrayBuffer | Uint8A
           studentCode: row.username,
           fullName: row.fullName,
           email: row.email,
+          phone: row.phone,
+          address: row.address,
           gender: row.gender,
           department: row.department,
           academicYear: row.academicYear,
@@ -364,6 +400,8 @@ export async function generateImportTemplate(): Promise<ExcelJS.Buffer> {
     { header: 'Họ và tên', key: 'fullName', width: 25 },
     { header: 'Giới tính', key: 'gender', width: 10 },
     { header: 'Email', key: 'email', width: 35 },
+    { header: 'Số điện thoại', key: 'phone', width: 16 },
+    { header: 'Địa chỉ', key: 'address', width: 30 },
     { header: 'Mật khẩu', key: 'password', width: 20 },
     { header: 'Role', key: 'role', width: 15 },
     { header: 'Lớp', key: 'className', width: 15 },
@@ -372,12 +410,10 @@ export async function generateImportTemplate(): Promise<ExcelJS.Buffer> {
     { header: 'Khoa', key: 'department', width: 25 },
   ];
 
-  const headerRow = sheet.getRow(1);
-  headerRow.font = { bold: true };
-  headerRow.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE6F4FF' } };
-
-  sheet.addRow({ username: 'N24DCCN001', fullName: 'Nguyễn Văn A', gender: 'Nam', email: 'n24dccn001@student.ptithcm.edu.vn', password: 'student123', role: 'STUDENT', className: 'D24CQCN01-N', major: 'Công nghệ thông tin', academicYear: 'D24', department: 'Công nghệ thông tin' });
-  sheet.addRow({ username: 'nguyenvana', fullName: 'Nguyễn Văn A', gender: 'Nam', email: 'nguyenvana@ptithcm.edu.vn', password: 'manager123', role: 'MANAGER', className: '', major: '', academicYear: '', department: '' });
-
+  const standardHeaderRow = sheet.getRow(1);
+  standardHeaderRow.font = { bold: true };
+  standardHeaderRow.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE6F4FF' } };
+  sheet.addRow({ username: 'N24DCCN001', fullName: 'Nguyen Van A', gender: 'Nam', email: 'n24dccn001@student.ptithcm.edu.vn', phone: '0912345678', address: '97 Man Thien, TP Thu Duc', password: 'student123', role: 'STUDENT', className: 'D24CQCN01-N', major: 'Cong nghe thong tin', academicYear: 'D24', department: 'Cong nghe thong tin' });
+  sheet.addRow({ username: 'nguyenvana', fullName: 'Nguyen Van A', gender: 'Nam', email: 'nguyenvana@ptithcm.edu.vn', phone: '', address: '', password: 'manager123', role: 'MANAGER', className: '', major: '', academicYear: '', department: '' });
   return await workbook.xlsx.writeBuffer();
 }

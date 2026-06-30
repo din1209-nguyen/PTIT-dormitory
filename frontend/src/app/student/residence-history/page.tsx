@@ -1,13 +1,11 @@
 'use client';
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Users, Building2, BedDouble, User } from 'lucide-react';
+import { Users, Building2, BedDouble, User, Loader2 } from 'lucide-react';
 import apiClient from '@/lib/api/apiClient';
 import { Card } from '@/components/common/Card';
 import { Badge } from '@/components/common/Badge';
 import { Modal } from '@/components/common/Modal';
-import { Button } from '@/components/common/Button';
-import Link from 'next/link';
 import type { Student } from '@/types/student';
 import type { RoomAssignment } from '@/types/roomAssignment';
 import type { ApiResponse } from '@/types/api';
@@ -21,6 +19,63 @@ function InfoRow({ label, value, badge }: { label: string; value?: string; badge
       </div>
     </div>
   );
+}
+
+// Lấy thông tin tầng và tòa nhà từ dữ liệu phòng đã populate
+function getPopulatedRoomLocation(record: RoomAssignment) {
+  const room = typeof record.roomId === 'object' ? record.roomId : null;
+  const floor = room && typeof room.floorId === 'object' ? room.floorId : null;
+  const building = floor && typeof floor.buildingId === 'object' ? floor.buildingId : null;
+
+  return {
+    roomNumber: room?.roomNumber,
+    floorNumber: floor?.floorNumber,
+    buildingName: building?.name,
+  };
+}
+
+// Tạo nhãn phòng an toàn từ snapshot và dữ liệu populate
+function getRoomDisplay(record: RoomAssignment) {
+  const populated = getPopulatedRoomLocation(record);
+  const roomNumber = record.roomSnapshot?.roomNumber || populated.roomNumber;
+  const floorNumber = record.roomSnapshot?.floorNumber ?? populated.floorNumber;
+  const buildingName = record.roomSnapshot?.buildingName || populated.buildingName;
+  const details = [
+    typeof floorNumber === 'number' ? `Tầng ${floorNumber}` : null,
+    buildingName ? `Dãy ${buildingName}` : null,
+  ].filter(Boolean);
+
+  return roomNumber ? `Phòng ${roomNumber}${details.length ? ` (${details.join(' - ')})` : ''}` : '—';
+}
+
+// Tạo nhãn giường an toàn từ snapshot và dữ liệu populate
+function getBedDisplay(record: RoomAssignment) {
+  const bed = typeof record.bedId === 'object' ? record.bedId : null;
+  const bedNumber = record.roomSnapshot?.bedNumber || bed?.bedNumber;
+
+  return bedNumber ? `Giường ${bedNumber}` : '—';
+}
+
+// Tạo tiêu đề phòng trong modal chi tiết
+function getRoomTitle(record: RoomAssignment) {
+  const populated = getPopulatedRoomLocation(record);
+  const roomNumber = record.roomSnapshot?.roomNumber || populated.roomNumber;
+  const buildingName = record.roomSnapshot?.buildingName || populated.buildingName;
+
+  return [buildingName ? `Dãy ${buildingName}` : null, roomNumber ? `Phòng ${roomNumber}` : 'Phòng'].filter(Boolean).join(' — ');
+}
+
+// Tạo mô tả tầng và giường trong modal chi tiết
+function getRoomSubtitle(record: RoomAssignment) {
+  const populated = getPopulatedRoomLocation(record);
+  const floorNumber = record.roomSnapshot?.floorNumber ?? populated.floorNumber;
+  const bed = typeof record.bedId === 'object' ? record.bedId : null;
+  const bedNumber = record.roomSnapshot?.bedNumber || bed?.bedNumber;
+
+  return [
+    typeof floorNumber === 'number' ? `Tầng ${floorNumber}` : null,
+    bedNumber ? `Giường ${bedNumber}` : null,
+  ].filter(Boolean).join(' · ');
 }
 
 export default function ResidenceHistoryPage() {
@@ -38,14 +93,22 @@ export default function ResidenceHistoryPage() {
     enabled: !!student?._id,
   });
 
+  // Lấy mã phòng và mã kỳ lưu trú từ bản ghi đang chọn
   const selectedRoomId = typeof selected?.roomId === 'object' ? selected.roomId._id : selected?.roomId;
   const selectedSemesterId = typeof selected?.semesterId === 'object' ? selected.semesterId._id : selected?.semesterId;
 
-  const { data: members, isLoading: membersLoading } = useQuery({
+  const {
+    data: members,
+    isLoading: membersLoading,
+    isError: membersError,
+  } = useQuery({
     queryKey: ['room-members', selectedRoomId, selectedSemesterId],
-    queryFn: () => apiClient.get<ApiResponse<RoomAssignment[]>>(`/room-assignments/rooms/${selectedRoomId}/members`, {
-      params: { semesterId: selectedSemesterId }
-    }).then(r => r.data.data),
+    queryFn: () =>
+      apiClient
+        .get<ApiResponse<RoomAssignment[]>>(`/room-assignments/rooms/${selectedRoomId}/members`, {
+          params: { semesterId: selectedSemesterId },
+        })
+        .then(r => r.data.data),
     enabled: !!selectedRoomId && !!selectedSemesterId,
   });
 
@@ -53,7 +116,7 @@ export default function ResidenceHistoryPage() {
     <div className="flex flex-col gap-6">
       <Card>
         {isLoading ? (
-          <p className="text-sm text-text-secondary">Đang tải lịch sử lưu trú...</p>
+          <div className="flex justify-center py-4 text-text-secondary"><Loader2 className="w-6 h-6 animate-spin" /></div>
         ) : !assignments || assignments.length === 0 ? (
           <p className="text-sm text-text-secondary text-center py-8">Bạn chưa có lịch sử lưu trú nào.</p>
         ) : (
@@ -69,15 +132,8 @@ export default function ResidenceHistoryPage() {
             <tbody>
               {assignments.map(record => {
                 const sem = typeof record.semesterId === 'object' ? record.semesterId : null;
-                const rObj = typeof record.roomId === 'object' ? record.roomId : null;
-                const bObj = typeof record.bedId === 'object' ? record.bedId : null;
-                
-                const roomStr = record.roomSnapshot 
-                  ? `Phòng ${record.roomSnapshot.roomNumber} (Tầng ${record.roomSnapshot.floorNumber} - Dãy ${record.roomSnapshot.buildingName})` 
-                  : rObj ? `Phòng ${rObj.roomNumber}` : '—';
-                const bedStr = record.roomSnapshot?.bedNumber 
-                  ? `Giường ${record.roomSnapshot.bedNumber}` 
-                  : bObj ? `Giường ${bObj.bedNumber}` : '—';
+                const roomStr = getRoomDisplay(record);
+                const bedStr = getBedDisplay(record);
                 
                 return (
                   <tr 
@@ -115,14 +171,10 @@ export default function ResidenceHistoryPage() {
               </div>
               <div>
                 <h3 className="font-bold text-text-primary text-base">
-                  {selected.roomSnapshot 
-                    ? `Dãy ${selected.roomSnapshot.buildingName} — Phòng ${selected.roomSnapshot.roomNumber}`
-                    : typeof selected.roomId === 'object' ? `Phòng ${selected.roomId.roomNumber}` : 'Phòng'}
+                  {getRoomTitle(selected)}
                 </h3>
                 <p className="text-sm text-text-secondary">
-                  {selected.roomSnapshot
-                    ? `Tầng ${selected.roomSnapshot.floorNumber} · Giường ${selected.roomSnapshot.bedNumber}`
-                    : typeof selected.bedId === 'object' ? `Giường ${selected.bedId.bedNumber}` : ''}
+                  {getRoomSubtitle(selected)}
                 </p>
                 <div className="mt-2 text-xs text-text-secondary">
                   Ngày xếp: {new Date(selected.assignedAt).toLocaleDateString('vi-VN')}
@@ -138,8 +190,10 @@ export default function ResidenceHistoryPage() {
                 <Users size={16} /> Bạn cùng phòng kỳ này
               </h4>
               
-              {membersLoading ? (
-                <p className="text-sm text-text-secondary text-center py-4">Đang tải danh sách bạn cùng phòng...</p>
+              {membersError ? (
+                <p className="text-sm text-accent-red text-center py-4">Không thể tải danh sách bạn cùng phòng.</p>
+              ) : membersLoading ? (
+                <div className="flex justify-center py-4 text-text-secondary"><Loader2 className="w-6 h-6 animate-spin" /></div>
               ) : !members || members.length === 0 ? (
                 <p className="text-sm text-text-secondary text-center py-4">Không tìm thấy thông tin bạn cùng phòng.</p>
               ) : (

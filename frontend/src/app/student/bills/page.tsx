@@ -6,7 +6,6 @@ import { Card } from '@/components/common/Card';
 import { Badge } from '@/components/common/Badge';
 import { Button } from '@/components/common/Button';
 import { TableSkeleton } from '@/components/common/Skeleton';
-import type { UtilityBill } from '@/types/utilityBilling';
 import { getRoomLabel, generatePDF } from '@/features/utilityBilling/utils';
 
 function formatMoney(n: number) {

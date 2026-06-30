@@ -3,6 +3,7 @@ import apiClient from '@/lib/api/apiClient';
 import type { User } from '@/types/user';
 import type { PaginatedResponse } from '@/types/api';
 
+// Lấy danh sách người dùng theo bộ lọc và phân trang
 export function useUsers(params: { page?: number; limit?: number; role?: string; status?: string; keyword?: string } = {}) {
   const q = new URLSearchParams();
   Object.entries(params).forEach(([k, v]) => { if (v !== undefined && v !== '') q.set(k, String(v)); });
@@ -12,6 +13,7 @@ export function useUsers(params: { page?: number; limit?: number; role?: string;
   });
 }
 
+// Lấy chi tiết người dùng khi có id hợp lệ
 export function useUser(id: string) {
   return useQuery({
     queryKey: ['users', id],
@@ -20,14 +22,16 @@ export function useUser(id: string) {
   });
 }
 
+// Tạo người dùng mới và làm mới danh sách người dùng
 export function useCreateUser() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (data: { username: string; email: string; password: string; role: string; fullName?: string; gender?: string; className?: string; major?: string; academicYear?: string; department?: string; isFreshman?: boolean; }) => apiClient.post('/users', data),
+    mutationFn: (data: { username: string; email: string; password: string; role: string; fullName?: string; gender?: string; phone?: string; address?: string; className?: string; major?: string; academicYear?: string; department?: string; isFreshman?: boolean; }) => apiClient.post('/users', data),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['users'] }),
   });
 }
 
+// Cập nhật thông tin người dùng và làm mới cache liên quan
 export function useUpdateUser() {
   const qc = useQueryClient();
   return useMutation({
@@ -36,6 +40,7 @@ export function useUpdateUser() {
   });
 }
 
+// Khóa tài khoản người dùng
 export function useLockUser() {
   const qc = useQueryClient();
   return useMutation({
@@ -44,6 +49,7 @@ export function useLockUser() {
   });
 }
 
+// Mở khóa tài khoản người dùng
 export function useUnlockUser() {
   const qc = useQueryClient();
   return useMutation({
@@ -52,31 +58,11 @@ export function useUnlockUser() {
   });
 }
 
+// Đặt lại mật khẩu người dùng
 export function useResetPassword() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: ({ id, newPassword }: { id: string; newPassword: string }) => apiClient.post(`/users/${id}/reset-password`, { newPassword }),
     onSuccess: (_, { id }) => qc.invalidateQueries({ queryKey: ['users', id] }),
-  });
-}
-
-export function useImportUsersExcel() {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: (formData: FormData) => apiClient.post('/users/import-excel', formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['users'] }),
-  });
-}
-
-export function downloadUserTemplate() {
-  return apiClient.get('/users/import-template', { responseType: 'blob' }).then(res => {
-    const url = URL.createObjectURL(res.data as Blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'user-import-template.xlsx';
-    a.click();
-    URL.revokeObjectURL(url);
   });
 }

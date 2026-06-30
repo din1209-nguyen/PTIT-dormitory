@@ -36,11 +36,12 @@ export const PAGE_CONFIG: Record<string, PageInfo> = {
   // Student
 
   '/student/profile': { title: 'Hồ sơ cá nhân', icon: GraduationCap },
-  '/student/room': { title: 'Thông tin phòng', icon: BedDouble },
-  '/student/regulations': { title: 'Nội quy ký túc xá', icon: FileText },
+  '/student/room': { title: 'Phòng của tôi', icon: BedDouble },
+  '/student/residence-history': { title: 'Lịch sử lưu trú', icon: History },
+  '/student/regulations': { title: 'Nội quy', icon: FileText },
   '/student/notifications': { title: 'Thông báo', icon: Bell },
-  '/student/requests': { title: 'Đơn từ của tôi', icon: MessageSquare },
-  '/student/bills': { title: 'Hóa đơn điện nước', icon: CreditCard },
+  '/student/requests': { title: 'Gửi yêu cầu', icon: MessageSquare },
+  '/student/bills': { title: 'Thanh toán', icon: CreditCard },
 };
 
 export function getPageInfo(pathname: string): PageInfo | null {

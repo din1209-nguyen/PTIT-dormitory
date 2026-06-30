@@ -284,7 +284,7 @@ export default function ResidenceHistoryPage() {
                       <td className="py-3 pr-4">
                         {record.startDate ? new Date(record.startDate).toLocaleDateString('vi-VN') : '—'}
                       </td>
-                      <td className="py-3 pr-4 text-text-secondary">
+                      <td className="py-3 pr-4">
                         {record.endDate ? new Date(record.endDate).toLocaleDateString('vi-VN') : '—'}
                       </td>
                     </tr>

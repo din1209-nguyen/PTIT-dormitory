@@ -6,7 +6,7 @@ import { usePathname } from 'next/navigation';
 import {
   LayoutDashboard, GraduationCap, CalendarDays, Building2,
   BedDouble, FileText, Bell, MessageSquare, Zap, CreditCard,
-  AlertTriangle, BarChart3, Settings, Shield, ClipboardList,
+  AlertTriangle, BarChart3, Shield, ClipboardList,
   FileSpreadsheet, Shuffle, ChevronLeft, ChevronRight, History
 } from 'lucide-react';
 import type { Role } from '@/lib/auth/authStore';

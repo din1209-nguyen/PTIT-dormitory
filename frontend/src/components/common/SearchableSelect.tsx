@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
-import { X, ChevronDown, Search } from 'lucide-react';
+import { X, ChevronDown, Search, Loader2 } from 'lucide-react';
 
 export interface SearchOption {
   value: string;
@@ -125,7 +125,7 @@ export function SearchableSelect({ label, options, value, onChange, placeholder 
             )}
           </div>
           <div className="max-h-48 overflow-y-auto py-1">
-            {loading && <p className="px-3 py-2 text-sm text-text-secondary">Đang tải...</p>}
+            {loading && <div className="flex justify-center py-2 text-text-secondary"><Loader2 className="w-5 h-5 animate-spin" /></div>}
             {!loading && filtered.length === 0 && <p className="px-3 py-2 text-sm text-text-secondary">Không tìm thấy</p>}
             {filtered.map(o => (
               <button
@@ -224,7 +224,7 @@ export function MultiSearchableSelect({ label, options, value, onChange, placeho
       {open && typeof document !== 'undefined' && createPortal(
         <div ref={dropdownRef} style={dropdownStyle} className="animate-dropdown-in rounded-[var(--radius-sm)] border border-border bg-bg-card shadow-lg">
           <div className="max-h-48 overflow-y-auto py-1">
-            {loading && <p className="px-3 py-2 text-sm text-text-secondary">Đang tải...</p>}
+            {loading && <div className="flex justify-center py-2 text-text-secondary"><Loader2 className="w-5 h-5 animate-spin" /></div>}
             {!loading && filtered.length === 0 && <p className="px-3 py-2 text-sm text-text-secondary">Không tìm thấy</p>}
             {filtered.map(o => (
               <button

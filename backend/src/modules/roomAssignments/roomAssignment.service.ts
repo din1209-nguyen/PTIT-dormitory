@@ -7,7 +7,6 @@ import { Bed, type IBed } from '../../models/bed.model.js';
 import { Floor } from '../../models/floor.model.js';
 import { Building } from '../../models/building.model.js';
 import { RoomAssignment, RoomAssignmentStatus } from '../../models/roomAssignment.model.js';
-import { SystemConfig, parseConfigValue } from '../../models/systemConfig.model.js';
 import { AppError, NotFoundError } from '../../common/errors/index.js';
 import { ErrorCode } from '../../common/errors/errorCodes.js';
 import { RoomStatus, BedStatus, SemesterStatus, SemesterTerm, Gender, ResidenceType } from '../../common/constants/enums.js';
@@ -178,12 +177,12 @@ function findNextBedIndex(room: RoomWithBeds, usedBeds: Set<string>) {
 
 // Đánh giá mức độ phù hợp của một sinh viên với một phòng cụ thể (dựa trên bạn cùng phòng)
 function roomFitStats(student: IStudent, room: RoomWithBeds) {
-  // Ưu tiên tuyệt đối (100 điểm) cho phòng trống để bắt đầu rải đều sinh viên
+  // Đặt điểm thấp cho phòng trống để ưu tiên lấp đầy phòng đã mở trước
   if (room.occupants.length === 0) {
-    return { score: 100, matchingOccupants: 0 };
+    return { score: 0, matchingOccupants: 0 };
   }
 
-  let score = -100;
+  let score = 100;
   let matchingOccupants = 0;
 
   // Duyệt qua từng người đang ở trong phòng để chấm điểm độ tương đồng
@@ -207,6 +206,40 @@ function roomFitStats(student: IStudent, room: RoomWithBeds) {
   }
 
   return { score, matchingOccupants };
+}
+
+function pickBestRoomIndexForStudent(student: IStudent, roomIndices: number[], availableRooms: RoomWithBeds[], usedBeds: Set<string>) {
+  let bestRoomIdx = -1;
+  let bestScore = Number.NEGATIVE_INFINITY;
+  let bestMatchingOccupants = Number.NEGATIVE_INFINITY;
+  let bestOccupiedCount = Number.NEGATIVE_INFINITY;
+
+  // Quét qua danh sách các phòng được phép xếp
+  for (const roomIdx of roomIndices) {
+    const room = availableRooms[roomIdx];
+    if (!room) continue;
+    // Bỏ qua phòng sai giới tính hoặc hết giường
+    if (String(room.room.genderType) !== String(student.gender)) continue;
+    if (freeBedCount(room, usedBeds) <= 0) continue;
+
+    // Tính điểm mức độ phù hợp với các bạn trong phòng
+    const { score, matchingOccupants } = roomFitStats(student, room);
+    const occupiedCount = room.occupants.length;
+
+    // Lựa chọn phòng theo nguyên tắc: Ưu tiên điểm cao -> Nhóm đông hơn -> Ưu tiên lấp đầy phòng đã có người
+    if (
+      score > bestScore
+      || (score === bestScore && matchingOccupants > bestMatchingOccupants)
+      || (score === bestScore && matchingOccupants === bestMatchingOccupants && occupiedCount > bestOccupiedCount)
+    ) {
+      bestScore = score;
+      bestMatchingOccupants = matchingOccupants;
+      bestOccupiedCount = occupiedCount;
+      bestRoomIdx = roomIdx;
+    }
+  }
+
+  return bestRoomIdx;
 }
 
 // Thực thi thuật toán gán phòng tự động hàng loạt cho sinh viên
@@ -292,35 +325,7 @@ export async function autoAssignRooms(semesterId: string, assignedBy: string, ex
 
   // Tìm kiếm và gán sinh viên vào căn phòng phù hợp nhất (Best Fit Algorithm)
   function assignToBestRoom(item: StudentQueueItem, roomIndices: number[]) {
-    let bestRoomIdx = -1;
-    let bestScore = Number.NEGATIVE_INFINITY;
-    let bestMatchingOccupants = Number.NEGATIVE_INFINITY;
-    let bestOccupiedCount = Number.NEGATIVE_INFINITY;
-
-    // Quét qua danh sách các phòng được phép xếp
-    for (const roomIdx of roomIndices) {
-      const room = availableRooms[roomIdx];
-      if (!room) continue;
-      // Bỏ qua phòng sai giới tính hoặc hết giường
-      if (String(room.room.genderType) !== String(item.student.gender)) continue;
-      if (freeBedCount(room, usedBeds) <= 0) continue;
-
-      // Tính điểm mức độ phù hợp với các bạn trong phòng
-      const { score, matchingOccupants } = roomFitStats(item.student, room);
-      const occupiedCount = room.occupants.length;
-
-      // Lựa chọn phòng theo nguyên tắc: Ưu tiên điểm cao -> Nhóm đông hơn -> Ưu tiên lấp đầy phòng đã có người
-      if (
-        score > bestScore
-        || (score === bestScore && matchingOccupants > bestMatchingOccupants)
-        || (score === bestScore && matchingOccupants === bestMatchingOccupants && occupiedCount > bestOccupiedCount)
-      ) {
-        bestScore = score;
-        bestMatchingOccupants = matchingOccupants;
-        bestOccupiedCount = occupiedCount;
-        bestRoomIdx = roomIdx;
-      }
-    }
+    const bestRoomIdx = pickBestRoomIndexForStudent(item.student, roomIndices, availableRooms, usedBeds);
 
     // Nếu tìm thấy phòng tốt nhất, tiến hành gán phòng
     return bestRoomIdx >= 0 ? assignStudent(item, bestRoomIdx) : false;
@@ -434,6 +439,11 @@ export async function autoAssignRooms(semesterId: string, assignedBy: string, ex
     warnings,
   };
 }
+
+export const __roomAssignmentTestUtils = {
+  pickBestRoomIndexForStudent,
+  roomFitStats,
+};
 
 export async function manualAssign(data: { studentId: string; roomId: string; bedId: string; semesterId: string; assignedBy: string }) {
   const semester = await Semester.findById(data.semesterId);
@@ -592,7 +602,16 @@ export async function getUnassignedStudentsBySemester(semesterId: string) {
 }
 
 export async function getAssignmentsByStudent(studentId: string) {
-  const assignments = await RoomAssignment.find({ studentId }).populate('semesterId', 'name term academicYear startDate endDate status').populate('roomId', 'roomNumber').populate('bedId', 'bedNumber').sort({ assignedAt: -1 }).lean();
+  const assignments = await RoomAssignment.find({ studentId })
+    .populate('semesterId', 'name term academicYear startDate endDate status')
+    .populate({
+      path: 'roomId',
+      select: 'roomNumber floorId genderType capacity isFreshmanPriority',
+      populate: { path: 'floorId', select: 'floorNumber buildingId', populate: { path: 'buildingId', select: 'name' } },
+    })
+    .populate('bedId', 'bedNumber')
+    .sort({ assignedAt: -1 })
+    .lean();
   
   // Deduplicate by semesterId, keeping the latest assignment
   const latestBySemester = new Map<string, any>();
@@ -612,12 +631,21 @@ export async function getRoomMembers(roomId: string, semesterId?: string) {
   const query: Record<string, unknown> = { roomId };
   if (semesterId) {
     query.semesterId = semesterId;
+    query.status = { $in: [RoomAssignmentStatus.ACTIVE, RoomAssignmentStatus.ENDED] };
   } else {
     query.status = RoomAssignmentStatus.ACTIVE;
   }
+
+  // Lấy danh sách thành viên cùng phòng và loại bỏ bản ghi đã hủy
   return RoomAssignment.find(query)
     .populate('studentId', 'studentCode fullName gender email phone className major department academicYear residenceType')
+    .populate({
+      path: 'roomId',
+      select: 'roomNumber floorId genderType capacity isFreshmanPriority',
+      populate: { path: 'floorId', select: 'floorNumber buildingId', populate: { path: 'buildingId', select: 'name' } },
+    })
     .populate('bedId', 'bedNumber')
+    .sort({ 'roomSnapshot.bedNumber': 1, assignedAt: 1 })
     .lean();
 }
 

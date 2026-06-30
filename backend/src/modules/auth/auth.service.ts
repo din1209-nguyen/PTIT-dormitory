@@ -2,7 +2,6 @@ import bcrypt from 'bcrypt';
 import crypto from 'node:crypto';
 import { User } from '../../models/user.model.js';
 import { RolePermission } from '../../models/rolePermission.model.js';
-import { Permission } from '../../models/permission.model.js';
 import { PasswordResetToken } from '../../models/passwordResetToken.model.js';
 import { AppError, UnauthorizedError, NotFoundError } from '../../common/errors/index.js';
 import { ErrorCode } from '../../common/errors/errorCodes.js';
@@ -11,7 +10,6 @@ import type { Role } from '../../common/constants/roles.js';
 import { logger } from '../../config/logger.js';
 import { logActivity } from '../../common/utils/auditLogger.js';
 import { AuditAction } from '../../common/constants/enums.js';
-import { env } from '../../config/env.js';
 import { queueEmail } from '../../integrations/mail/mail.service.js';
 import {
   generateAccessToken,
@@ -22,11 +20,13 @@ import {
   hashToken,
 } from './token.service.js';
 
+// Lấy danh sách quyền theo vai trò người dùng
 async function getPermissionsForRole(role: Role): Promise<string[]> {
   const rps = await RolePermission.find({ role }).populate<{ permissionId: { code: string } }>('permissionId', 'code').lean();
   return rps.map((rp) => rp.permissionId.code);
 }
 
+// Đăng nhập người dùng và tạo cặp token mới
 export async function login(
   username: string,
   password: string,
@@ -76,6 +76,7 @@ export async function login(
   };
 }
 
+// Làm mới access token bằng refresh token hợp lệ
 export async function refresh(
   oldRawToken: string,
   meta: { ipAddress?: string; userAgent?: string },
@@ -101,10 +102,12 @@ export async function refresh(
   return { accessToken, refreshToken: result.newRawToken };
 }
 
+// Đăng xuất người dùng bằng cách thu hồi refresh token
 export async function logout(rawToken: string) {
   await revokeRefreshToken(rawToken);
 }
 
+// Tạo mã OTP đặt lại mật khẩu và gửi email xác thực
 export async function forgotPassword(email: string) {
   const user = await User.findOne({ email });
   if (!user) return;
@@ -137,6 +140,7 @@ export async function forgotPassword(email: string) {
   });
 }
 
+// Kiểm tra mã OTP đặt lại mật khẩu còn hiệu lực
 export async function verifyOtp(email: string, otp: string) {
   const user = await User.findOne({ email });
   if (!user) throw new AppError(400, 'Mã OTP không hợp lệ', ErrorCode.AUTH_TOKEN_EXPIRED);
@@ -166,6 +170,7 @@ export async function verifyOtp(email: string, otp: string) {
   return rawToken;
 }
 
+// Đặt lại mật khẩu bằng token xác thực OTP
 export async function resetPassword(rawToken: string, newPassword: string) {
   const tokenHash = hashToken(rawToken);
   const resetToken = await PasswordResetToken.findOne({ tokenHash });
@@ -187,6 +192,7 @@ export async function resetPassword(rawToken: string, newPassword: string) {
   await revokeAllUserTokens(user.id);
 }
 
+// Đổi mật khẩu khi người dùng đang đăng nhập
 export async function changePassword(userId: string, currentPassword: string, newPassword: string) {
   const user = await User.findById(userId).select('+passwordHash');
   if (!user) throw new NotFoundError('Không tìm thấy người dùng', ErrorCode.USER_NOT_FOUND);
@@ -204,6 +210,7 @@ export async function changePassword(userId: string, currentPassword: string, ne
   await revokeAllUserTokens(user.id);
 }
 
+// Lấy thông tin người dùng hiện tại
 export async function getMe(userId: string) {
   const user = await User.findById(userId);
   if (!user) throw new NotFoundError('Không tìm thấy người dùng', ErrorCode.USER_NOT_FOUND);

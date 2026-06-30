@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useMemo } from 'react';
 import { toast } from 'sonner';
-import { AlertTriangle, Banknote, Download, Droplets, Plus, XCircle, Zap } from 'lucide-react';
+import { AlertTriangle, Banknote, Download, Droplets, Plus, XCircle, Zap, Loader2 } from 'lucide-react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   useBulkUpdateElectricPriceTiers,
@@ -506,7 +506,7 @@ function BillDetailModal({ billId, onClose }: { billId: string; onClose: () => v
   const { data: payments } = useBillPayments(billId);
   const cashConfirmMut = useCashConfirm();
 
-  if (isLoading || !bill) return <Modal open onClose={onClose} title="Chi tiết hóa đơn"><p className="py-4 text-center text-text-secondary">Đang tải...</p></Modal>;
+  if (isLoading || !bill) return <Modal open onClose={onClose} title="Chi tiết hóa đơn"><div className="flex justify-center py-4 text-text-secondary"><Loader2 className="w-6 h-6 animate-spin" /></div></Modal>;
 
   return (
     <Modal open onClose={onClose} title={`Hóa đơn tháng ${bill.month}/${bill.year} — ${getRoomLabel(bill.roomId)}`}>

@@ -24,10 +24,21 @@ export interface RoomAssignment {
     startDate: string;
     endDate: string;
   } | string;
-  roomId: { _id: string; roomNumber: string; genderType: string; capacity: number; isFreshmanPriority?: boolean } | string;
+  roomId: {
+    _id: string;
+    roomNumber: string;
+    genderType: string;
+    capacity: number;
+    isFreshmanPriority?: boolean;
+    floorId?: {
+      _id: string;
+      floorNumber?: number;
+      buildingId?: { _id: string; name?: string } | string;
+    } | string;
+  } | string;
   bedId: { _id: string; bedNumber: string } | string;
   assignedAt: string;
   status: 'ACTIVE' | 'ENDED' | 'CANCELLED';
   studentSnapshot?: Record<string, unknown>;
-  roomSnapshot?: { bedNumber?: string; [key: string]: unknown };
+  roomSnapshot?: { buildingName?: string; floorNumber?: number; roomNumber?: string; bedNumber?: string; [key: string]: unknown };
 }

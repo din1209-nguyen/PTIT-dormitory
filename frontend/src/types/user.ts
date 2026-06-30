@@ -4,6 +4,8 @@ export interface StudentInfo {
   fullName: string;
   gender: 'MALE' | 'FEMALE';
   email: string;
+  phone?: string;
+  address?: string;
   className?: string;
   major?: string;
   department?: string;

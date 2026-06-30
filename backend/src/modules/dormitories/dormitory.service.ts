@@ -5,9 +5,10 @@ import { Room } from '../../models/room.model.js';
 import { Bed } from '../../models/bed.model.js';
 import { AppError, NotFoundError } from '../../common/errors/index.js';
 import { ErrorCode } from '../../common/errors/errorCodes.js';
-import { BedStatus, RoomStatus } from '../../common/constants/enums.js';
+import { BedStatus } from '../../common/constants/enums.js';
 
-// ---- Building ----
+// Nhóm xử lý dữ liệu tòa nhà
+// Lấy danh sách tòa nhà kèm thống kê tầng phòng giường
 export async function listBuildings(filter: { status?: string }) {
   const query: Record<string, unknown> = {};
   if (filter.status) query.status = filter.status;
@@ -65,10 +66,12 @@ export async function listBuildings(filter: { status?: string }) {
   ]);
 }
 
+// Tạo tòa nhà mới
 export async function createBuilding(data: Record<string, unknown>) {
   return Building.create(data);
 }
 
+// Cập nhật tòa nhà và đồng bộ trạng thái xuống tầng phòng giường
 export async function updateBuilding(id: string, data: Record<string, unknown>) {
   if (data.status !== undefined) {
     const floors = await Floor.find({ buildingId: id }).select('_id').lean();
@@ -113,6 +116,7 @@ export async function updateBuilding(id: string, data: Record<string, unknown>) 
   return building;
 }
 
+// Xóa tòa nhà sau khi kiểm tra không còn sinh viên đang ở
 export async function deleteBuilding(id: string) {
   const floors = await Floor.find({ buildingId: id }).select('_id').lean();
   const rooms = await Room.find({ floorId: { $in: floors.map(f => f._id) } }).select('_id').lean();
@@ -127,7 +131,8 @@ export async function deleteBuilding(id: string) {
   return { success: true };
 }
 
-// ---- Floor ----
+// Nhóm xử lý dữ liệu tầng
+// Lấy danh sách tầng theo tòa nhà kèm thống kê phòng giường
 export async function listFloors(buildingId: string) {
   return Floor.aggregate([
     { $match: { buildingId: new mongoose.Types.ObjectId(buildingId) } },
@@ -166,10 +171,12 @@ export async function listFloors(buildingId: string) {
   ]);
 }
 
+// Tạo tầng mới
 export async function createFloor(data: Record<string, unknown>) {
   return Floor.create(data);
 }
 
+// Cập nhật tầng và đồng bộ trạng thái xuống phòng giường
 export async function updateFloor(id: string, data: Record<string, unknown>) {
   if (data.status !== undefined) {
     const rooms = await Room.find({ floorId: id }).select('_id').lean();
@@ -209,6 +216,7 @@ export async function updateFloor(id: string, data: Record<string, unknown>) {
   return floor;
 }
 
+// Xóa tầng sau khi kiểm tra không còn sinh viên đang ở
 export async function deleteFloor(id: string) {
   const rooms = await Room.find({ floorId: id }).select('_id').lean();
   const occupiedBed = await Bed.findOne({ roomId: { $in: rooms.map(r => r._id) }, status: BedStatus.OCCUPIED }).lean();
@@ -221,7 +229,8 @@ export async function deleteFloor(id: string) {
   return { success: true };
 }
 
-// ---- Room ----
+// Nhóm xử lý dữ liệu phòng
+// Lấy danh sách phòng theo bộ lọc và tùy chọn populate
 export async function listRooms(filter: { buildingId?: string; floorId?: string; genderType?: string; status?: string; populate?: boolean }) {
   const query: Record<string, unknown> = {};
   if (filter.buildingId) {
@@ -299,6 +308,7 @@ export async function listRooms(filter: { buildingId?: string; floorId?: string;
   return Room.aggregate(pipeline);
 }
 
+// Tạo phòng mới và sinh danh sách giường theo sức chứa
 export async function createRoom(data: { floorId: string; roomNumber: string; capacity: number; genderType: string; status?: string; isFreshmanPriority?: boolean }) {
   const session = await mongoose.startSession();
   session.startTransaction();
@@ -320,6 +330,7 @@ export async function createRoom(data: { floorId: string; roomNumber: string; ca
   }
 }
 
+// Cập nhật phòng và điều chỉnh giường khi sức chứa thay đổi
 export async function updateRoom(id: string, data: Record<string, unknown>) {
   const room = await Room.findById(id);
   if (!room) throw new NotFoundError('Không tìm thấy phòng', ErrorCode.ROOM_NOT_FOUND);
@@ -356,6 +367,7 @@ export async function updateRoom(id: string, data: Record<string, unknown>) {
   return { room, warning };
 }
 
+// Xóa phòng sau khi kiểm tra không có giường đang được sử dụng
 export async function deleteRoom(id: string) {
   const occupiedBed = await Bed.findOne({ roomId: id, status: BedStatus.OCCUPIED }).lean();
   if (occupiedBed) throw new AppError(400, 'Không thể xóa phòng đang có sinh viên ở', ErrorCode.INVALID_DATA);
@@ -365,11 +377,13 @@ export async function deleteRoom(id: string) {
   return { success: true };
 }
 
-// ---- Bed ----
+// Nhóm xử lý dữ liệu giường
+// Lấy danh sách giường theo phòng
 export async function listBeds(roomId: string) {
   return Bed.find({ roomId }).sort({ bedNumber: 1 }).lean();
 }
 
+// Tạo thêm giường và cập nhật sức chứa phòng khi cần
 export async function createBed(data: { roomId: string }) {
   const room = await Room.findById(data.roomId);
   if (!room) throw new NotFoundError('Không tìm thấy phòng', ErrorCode.ROOM_NOT_FOUND);
@@ -395,6 +409,7 @@ export async function createBed(data: { roomId: string }) {
   return bed;
 }
 
+// Cập nhật trạng thái giường khi giường không có sinh viên
 export async function updateBed(id: string, data: { status: string }) {
   const currentBed = await Bed.findById(id);
   if (!currentBed) throw new NotFoundError('Không tìm thấy giường', ErrorCode.BED_NOT_FOUND);
@@ -411,6 +426,7 @@ export async function updateBed(id: string, data: { status: string }) {
   return bed;
 }
 
+// Xóa giường sau khi kiểm tra giường không có sinh viên
 export async function deleteBed(id: string) {
   const bed = await Bed.findById(id).lean();
   if (!bed) throw new NotFoundError('Không tìm thấy giường', ErrorCode.BED_NOT_FOUND);

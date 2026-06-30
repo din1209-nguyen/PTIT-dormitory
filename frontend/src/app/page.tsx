@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect } from 'react';
+import { Loader2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/lib/auth/authStore';
 import { getDashboardPath } from '@/lib/auth/useRoleGuard';
@@ -20,7 +21,7 @@ export default function Home() {
 
   return (
     <div className="flex min-h-screen items-center justify-center">
-      <p className="text-text-secondary">Redirecting...</p>
+      <Loader2 className="w-8 h-8 animate-spin text-text-secondary" />
     </div>
   );
 }

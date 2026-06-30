@@ -11,7 +11,6 @@ import { UtilityBillMember } from '../models/utilityBillMember.model.js';
 import { Payment } from '../models/payment.model.js';
 import { Violation } from '../models/violation.model.js';
 import { StudentRequest } from '../models/studentRequest.model.js';
-import { SystemConfig } from '../models/systemConfig.model.js';
 import { 
   SemesterStatus, BillStatus, 
   BillMemberStatus, PaymentStatus, PaymentMethod, 
@@ -59,13 +58,6 @@ export async function seedRealisticTransactions() {
 
   const maleRooms = rooms.filter(r => r.genderType === 'MALE');
   const femaleRooms = rooms.filter(r => r.genderType === 'FEMALE');
-
-  // Configs for bills
-  const waterPriceCfg = await SystemConfig.findOne({ configKey: 'WATER_PRICE' }).lean();
-  const vatCfg = await SystemConfig.findOne({ configKey: 'VAT_PERCENT' }).lean();
-  
-  const waterPrice = Number(waterPriceCfg?.configValue || 12000);
-  const vat = Number(vatCfg?.configValue || 8) / 100;
 
   for (const sem of semesters) {
     console.log(`\n  ⏳ Đang xử lý kỳ: ${sem.name} (${sem.academicYear}) - ${sem.status}`);

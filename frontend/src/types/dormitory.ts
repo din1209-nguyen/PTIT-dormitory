@@ -26,6 +26,23 @@ export interface Room {
   stats?: { bedCount: number; activeBedCount: number; occupiedBedCount: number; currentResidentCount?: number };
 }
 
+export interface PopulatedFloor {
+  _id: string;
+  floorNumber: number;
+  buildingId?: Building;
+}
+
+export interface PopulatedRoom extends Omit<Room, 'floorId'> {
+  floorId?: PopulatedFloor | string;
+}
+
+export interface RoomListFilters {
+  status?: string;
+  genderType?: string;
+  buildingId?: string;
+  floorId?: string;
+}
+
 export interface Bed {
   _id: string;
   roomId: string;

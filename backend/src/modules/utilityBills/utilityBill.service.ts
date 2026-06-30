@@ -2,7 +2,7 @@ import mongoose from 'mongoose';
 import { UtilityUsage } from '../../models/utilityUsage.model.js';
 import { UtilityBill } from '../../models/utilityBill.model.js';
 import { UtilityBillMember } from '../../models/utilityBillMember.model.js';
-import { ElectricPriceTier, type IElectricPriceTier } from '../../models/electricPriceTier.model.js';
+import { ElectricPriceTier } from '../../models/electricPriceTier.model.js';
 import { RoomAssignment, RoomAssignmentStatus } from '../../models/roomAssignment.model.js';
 import { Semester } from '../../models/semester.model.js';
 import { Student } from '../../models/student.model.js';

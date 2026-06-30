@@ -12,6 +12,7 @@ import { Button } from '@/components/common/Button';
 import { Card } from '@/components/common/Card';
 import { Badge } from '@/components/common/Badge';
 import { Select } from '@/components/common/Select';
+import { Input } from '@/components/common/Input';
 import { Modal } from '@/components/common/Modal';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import { Skeleton } from '@/components/common/Skeleton';
@@ -45,6 +46,7 @@ export default function RoomAssignmentsPage() {
   const [excludedStudentIds, setExcludedStudentIds] = useState<Set<string>>(new Set());
   const [addWaitlistOpen, setAddWaitlistOpen] = useState(false);
   const [selectedWaitlistStudent, setSelectedWaitlistStudent] = useState('');
+  const [waitlistRegisteredAt, setWaitlistRegisteredAt] = useState('');
 
   const [assignedPage, setAssignedPage] = useState(1);
   const [unassignedPage, setUnassignedPage] = useState(1);
@@ -251,14 +253,19 @@ export default function RoomAssignmentsPage() {
       toast.error('Vui lòng chọn sinh viên');
       return;
     }
+    if (!waitlistRegisteredAt) {
+      toast.error('Vui lòng nhập thời điểm đăng ký');
+      return;
+    }
     waitlistMut.mutate(
-      { id: selectedWaitlistStudent, semesterId },
+      { id: selectedWaitlistStudent, semesterId, registeredAt: waitlistRegisteredAt },
       {
         onSuccess: () => {
           toast.success('Đã thêm sinh viên vào danh sách chờ');
           setAddWaitlistOpen(false);
           setSelectedWaitlistStudent('');
           setStudentKeyword('');
+          setWaitlistRegisteredAt('');
         },
         onError: (err: any) => toast.error(err.response?.data?.message || 'Có lỗi xảy ra'),
       }
@@ -679,6 +686,13 @@ export default function RoomAssignmentsPage() {
             onSearch={setStudentKeyword}
             placeholder="Nhập mã hoặc tên SV..."
             loading={studentsLoading}
+          />
+          <Input
+            label="Thời điểm đăng ký"
+            type="datetime-local"
+            value={waitlistRegisteredAt}
+            onChange={(event) => setWaitlistRegisteredAt(event.target.value)}
+            required
           />
           <Button type="submit" loading={waitlistMut.isPending} className="mt-2" disabled={!selectedWaitlistStudent}>
             Thêm vào hàng chờ

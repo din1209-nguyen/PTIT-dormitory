@@ -1,7 +1,6 @@
 import { Semester } from '../../models/semester.model.js';
 import { Student } from '../../models/student.model.js';
 import { Bed } from '../../models/bed.model.js';
-import { ResidenceRecord } from '../../models/residenceRecord.model.js';
 import { RoomAssignment, RoomAssignmentStatus } from '../../models/roomAssignment.model.js';
 import { AppError, NotFoundError } from '../../common/errors/index.js';
 import { ErrorCode } from '../../common/errors/errorCodes.js';

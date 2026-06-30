@@ -1,4 +1,4 @@
-import mongoose from 'mongoose';
+﻿import mongoose from 'mongoose';
 import type { Request, Response } from 'express';
 import ExcelJS from 'exceljs';
 import { sendSuccess, sendCreated } from '../../common/utils/response.js';
@@ -138,7 +138,7 @@ export async function getRoomMembers(req: Request, res: Response) {
 
 export async function unassign(req: Request, res: Response) {
   const data = await raService.unassignRoom(req.params.id as string);
-  sendSuccess(res, data, 'ÄÃ£ há»§y xáº¿p phÃ²ng');
+  sendSuccess(res, data, 'Đã hủy xếp phòng');
 }
 
 export async function transfer(req: Request, res: Response) {

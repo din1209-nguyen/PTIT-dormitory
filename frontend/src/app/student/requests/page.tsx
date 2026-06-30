@@ -1,6 +1,6 @@
 'use client';
 import { useState } from 'react';
-import { Plus, MessageSquare } from 'lucide-react';
+import { Plus } from 'lucide-react';
 import { useMyRequests, useCreateRequest } from '@/features/requests/api';
 import { toast } from 'sonner';
 import { Button } from '@/components/common/Button';

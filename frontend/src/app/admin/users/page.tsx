@@ -1,6 +1,6 @@
 'use client';
 import { useState, useEffect, useMemo } from 'react';
-import { Plus, Lock, Unlock, Eye, Pencil, Key, Search, Users, UserCheck, Shield } from 'lucide-react';
+import { Plus, Lock, Unlock, Key, Search, Users, UserCheck, Shield } from 'lucide-react';
 import { useUsers, useCreateUser, useLockUser, useUnlockUser, useUser, useUpdateUser, useResetPassword } from '@/features/users/api';
 import { useUpdateStudent } from '@/features/students/api';
 import { useAdminDashboard } from '@/features/dashboard/api';
@@ -87,6 +87,8 @@ export default function AdminUsersPage() {
         ...(fd.get('role') === 'STUDENT' ? {
           fullName: fd.get('fullName') as string,
           gender: fd.get('gender') as string,
+          phone: fd.get('phone') as string,
+          address: fd.get('address') as string,
           className: fd.get('className') as string,
           major: fd.get('major') as string,
           academicYear: derivedAcademicYear,
@@ -144,12 +146,16 @@ export default function AdminUsersPage() {
         const studentId = userDetails.studentInfo._id as string;
         const fullName = fd.get('fullName') as string;
         const gender = fd.get('gender') as ('MALE' | 'FEMALE');
+        const phone = fd.get('phone') as string;
+        const address = fd.get('address') as string;
         const className = fd.get('className') as string;
         const major = fd.get('major') as string;
 
         const studentChanged =
           fullName !== userDetails.studentInfo.fullName ||
           gender !== userDetails.studentInfo.gender ||
+          phone !== (userDetails.studentInfo.phone || '') ||
+          address !== (userDetails.studentInfo.address || '') ||
           className !== userDetails.studentInfo.className ||
           major !== userDetails.studentInfo.major ||
           editStudentDept !== userDetails.studentInfo.department;
@@ -157,7 +163,7 @@ export default function AdminUsersPage() {
         if (studentChanged) {
           await updateStudentMut.mutateAsync({
             id: studentId,
-            data: { fullName, gender, className, major, department: editStudentDept || userDetails.studentInfo.department },
+            data: { fullName, gender, phone, address, className, major, department: editStudentDept || userDetails.studentInfo.department },
           });
         }
       }
@@ -215,7 +221,7 @@ export default function AdminUsersPage() {
         <StatCard
           icon={<Shield size={20} />}
           label="Phân quyền hệ thống"
-          value="3 roles"
+          value="3 vai trò"
           accentColor="#7C3AED"
         />
       </div>
@@ -314,6 +320,10 @@ export default function AdminUsersPage() {
 
           {createRole === 'STUDENT' && (
             <div className="grid grid-cols-2 gap-4 rounded-md border border-border p-4 bg-bg-page/50">
+              <Input label="Số điện thoại" name="phone" placeholder="VD: 0912345678" required />
+              <div className="col-span-2">
+                <Input label="Địa chỉ" name="address" placeholder="Nhập địa chỉ thường trú hoặc tạm trú" required />
+              </div>
               <div className="col-span-2">
                 <Input label="Họ và tên" name="fullName" required placeholder="VD: Nguyễn Văn A" />
               </div>
@@ -454,7 +464,24 @@ export default function AdminUsersPage() {
                       disabled={!canEdit(userDetails.role)}
                     />
                     <Input
-                      label="Lớp"
+                      label="Số điện thoại"
+                      name="phone"
+                      defaultValue={userDetails.studentInfo.phone || ''}
+                      placeholder="VD: 0912345678"
+                      readOnly={!canEdit(userDetails.role)}
+                      className={!canEdit(userDetails.role) ? 'bg-bg-page text-text-secondary' : ''}
+                    />
+                    <Input
+                      label="Địa chỉ"
+                      name="address"
+                      defaultValue={userDetails.studentInfo.address || ''}
+                      placeholder="Nhập địa chỉ thường trú hoặc tạm trú"
+                      required
+                      readOnly={!canEdit(userDetails.role)}
+                      className={!canEdit(userDetails.role) ? 'bg-bg-page text-text-secondary' : ''}
+                    />
+                    <Input
+                      label="L?p"
                       name="className"
                       defaultValue={userDetails.studentInfo.className}
                       readOnly={!canEdit(userDetails.role)}

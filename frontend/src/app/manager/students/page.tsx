@@ -15,403 +15,64 @@ import { Badge } from '@/components/common/Badge';
 import { Input } from '@/components/common/Input';
 import { Select } from '@/components/common/Select';
 import { Modal } from '@/components/common/Modal';
-import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import { TableSkeleton } from '@/components/common/Skeleton';
 import type { Student } from '@/types/student';
 import type { ApiResponse } from '@/types/api';
 
+const TEXT = {
+  searchPlaceholder: 'T\u00ecm m\u00e3 SV, t\u00ean, email...',
+  allGenders: 'T\u1ea5t c\u1ea3 gi\u1edbi t\u00ednh', allDepartments: 'T\u1ea5t c\u1ea3 khoa', allStatuses: 'T\u1ea5t c\u1ea3 tr\u1ea1ng th\u00e1i',
+  freshman: 'T\u00e2n sinh vi\u00ean', freshmanShort: 'T\u00e2n SV', addStudent: 'Th\u00eam sinh vi\u00ean',
+  totalStudents: 'T\u1ed5ng sinh vi\u00ean', pendingRoom: 'Ch\u01b0a c\u00f3 ph\u00f2ng', residing: '\u0110ang l\u01b0u tr\u00fa', notResiding: 'Kh\u00f4ng \u1edf',
+  fullName: 'H\u1ecd t\u00ean', gender: 'Gi\u1edbi t\u00ednh', female: 'N\u1eef', phone: 'S\u1ed1 \u0111i\u1ec7n tho\u1ea1i', academicYear: 'Kh\u00f3a', residence: 'C\u01b0 tr\u00fa', actions: 'Thao t\u00e1c', edit: 'Ch\u1ec9nh s\u1eeda',
+  profileTitle: 'H\u1ed3 s\u01a1 sinh vi\u00ean', studentCode: 'M\u00e3 sinh vi\u00ean', notUpdated: 'Ch\u01b0a c\u1eadp nh\u1eadt', address: '\u0110\u1ecba ch\u1ec9',
+  addressPlaceholder: 'Nh\u1eadp \u0111\u1ecba ch\u1ec9 th\u01b0\u1eddng tr\u00fa ho\u1eb7c t\u1ea1m tr\u00fa', registeredAt: 'Th\u1eddi \u0111i\u1ec3m \u0111\u0103ng k\u00fd',
+  selectDepartment: 'Ch\u1ecdn khoa', major: 'Ng\u00e0nh', selectMajor: 'Ch\u1ecdn ng\u00e0nh', className: 'L\u1edbp', autoAcademicYear: 'S\u1ebd t\u1ef1 \u0111\u1ed9ng t\u1ea1o t\u1eeb m\u00e3 sinh vi\u00ean',
+  update: 'C\u1eadp nh\u1eadt', addNew: 'Th\u00eam m\u1edbi', duplicateTitle: 'Sinh vi\u00ean \u0111\u00e3 t\u1ed3n t\u1ea1i',
+  duplicateMessage: 'Nh\u1eadp th\u1eddi \u0111i\u1ec3m \u0111\u0103ng k\u00fd \u0111\u1ec3 \u0111\u01b0a sinh vi\u00ean n\u00e0y v\u00e0o danh s\u00e1ch ch\u1edd x\u1ebfp ph\u00f2ng.', cancel: 'H\u1ee7y', addToWaiting: '\u0110\u01b0a v\u00e0o h\u00e0ng ch\u1edd',
+};
+
 const MAJORS = [
-  { code: 'CN', name: 'Công nghệ thông tin', dept: 'Công nghệ thông tin' },
-  { code: 'AT', name: 'An toàn thông tin', dept: 'Công nghệ thông tin' },
-  { code: 'VT', name: 'Kỹ thuật điện tử viễn thông', dept: 'Viễn thông' },
-  { code: 'DT', name: 'Kỹ thuật điện tử', dept: 'Kỹ thuật Điện tử' },
-  { code: 'PT', name: 'Công nghệ đa phương tiện', dept: 'Đa phương tiện' },
-  { code: 'KT', name: 'Kế toán', dept: 'Kế toán' },
-  { code: 'QT', name: 'Quản trị kinh doanh', dept: 'Quản trị kinh doanh' },
-  { code: 'MR', name: 'Marketing', dept: 'Quản trị kinh doanh' }
+  { code: 'CN', name: 'C\u00f4ng ngh\u1ec7 th\u00f4ng tin', dept: 'C\u00f4ng ngh\u1ec7 th\u00f4ng tin' },
+  { code: 'AT', name: 'An to\u00e0n th\u00f4ng tin', dept: 'C\u00f4ng ngh\u1ec7 th\u00f4ng tin' },
+  { code: 'VT', name: 'K\u1ef9 thu\u1eadt \u0111i\u1ec7n t\u1eed vi\u1ec5n th\u00f4ng', dept: 'Vi\u1ec5n th\u00f4ng' },
+  { code: 'DT', name: 'K\u1ef9 thu\u1eadt \u0111i\u1ec7n t\u1eed', dept: 'K\u1ef9 thu\u1eadt \u0110i\u1ec7n t\u1eed' },
+  { code: 'PT', name: 'C\u00f4ng ngh\u1ec7 \u0111a ph\u01b0\u01a1ng ti\u1ec7n', dept: '\u0110a ph\u01b0\u01a1ng ti\u1ec7n' },
+  { code: 'KT', name: 'K\u1ebf to\u00e1n', dept: 'K\u1ebf to\u00e1n' },
+  { code: 'QT', name: 'Qu\u1ea3n tr\u1ecb kinh doanh', dept: 'Qu\u1ea3n tr\u1ecb kinh doanh' },
+  { code: 'MR', name: 'Marketing', dept: 'Qu\u1ea3n tr\u1ecb kinh doanh' },
 ];
 
-function useFreshmanCohortYears() {
-  return useQuery({
-    queryKey: ['config', 'freshman_cohort_years'],
-    queryFn: () => apiClient.get<ApiResponse<{ configValue: string }>>('/configs/freshman_cohort_years').then(r => {
-      try { return JSON.parse(r.data.data.configValue) as string[]; } catch { return []; }
-    }),
-  });
-}
+function useFreshmanCohortYears() { return useQuery({ queryKey: ['config', 'freshman_cohort_years'], queryFn: () => apiClient.get<ApiResponse<{ configValue: string }>>('/configs/freshman_cohort_years').then(response => { try { return JSON.parse(response.data.data.configValue) as string[]; } catch { return []; } }) }); }
 
 export default function StudentsPage() {
-  const [page, setPage] = useState(1);
-  const [keyword, setKeyword] = useState('');
-  const [genderFilter, setGenderFilter] = useState('');
-  const [deptFilter, setDeptFilter] = useState('');
-  const [residenceFilter, setResidenceFilter] = useState('');
-  const [freshmanOnly, setFreshmanOnly] = useState(false);
-  const [modalOpen, setModalOpen] = useState(false);
-  const [unlockedFields, setUnlockedFields] = useState<Record<string, boolean>>({});
-  const [editing, setEditing] = useState<Student | null>(null);
-  const [viewingStudent, setViewingStudent] = useState<Student | null>(null);
-  const [selectedDept, setSelectedDept] = useState('');
-  const [confirmWaitingStudent, setConfirmWaitingStudent] = useState<Student | null>(null);
-
-  const { data, isLoading } = useStudents({
-    page, limit: 10, keyword, gender: genderFilter, department: deptFilter,
-    residenceType: residenceFilter,
-    isFreshman: freshmanOnly ? true : undefined
-  });
-  const { data: studentStats } = useStudentStats();
-  const { data: faculties } = useFaculties();
-  const { data: freshmanYears } = useFreshmanCohortYears();
-  const createMut = useCreateStudent();
-  const updateMut = useUpdateStudent();
-  const waitingListMut = useAddToWaitingList();
-
+  const [page, setPage] = useState(1); const [keyword, setKeyword] = useState(''); const [genderFilter, setGenderFilter] = useState(''); const [deptFilter, setDeptFilter] = useState(''); const [residenceFilter, setResidenceFilter] = useState(''); const [freshmanOnly, setFreshmanOnly] = useState(false);
+  const [modalOpen, setModalOpen] = useState(false); const [unlockedFields, setUnlockedFields] = useState<Record<string, boolean>>({}); const [editing, setEditing] = useState<Student | null>(null); const [viewingStudent, setViewingStudent] = useState<Student | null>(null); const [selectedDept, setSelectedDept] = useState(''); const [confirmWaitingStudent, setConfirmWaitingStudent] = useState<Student | null>(null); const [waitingRegisteredAt, setWaitingRegisteredAt] = useState('');
+  const { data, isLoading } = useStudents({ page, limit: 10, keyword, gender: genderFilter, department: deptFilter, residenceType: residenceFilter, isFreshman: freshmanOnly ? true : undefined });
+  const { data: studentStats } = useStudentStats(); const { data: faculties } = useFaculties(); const { data: freshmanYears } = useFreshmanCohortYears(); const createMut = useCreateStudent(); const updateMut = useUpdateStudent(); const waitingListMut = useAddToWaitingList();
   const freshmanSet = useMemo(() => new Set(freshmanYears || []), [freshmanYears]);
-
-  function openCreate() {
-    setEditing(null);
-    setUnlockedFields({});
-    setSelectedDept('');
-    setModalOpen(true);
-  }
-
+  function openCreate() { setEditing(null); setUnlockedFields({}); setSelectedDept(''); setWaitingRegisteredAt(''); setModalOpen(true); }
+  function openEdit(student: Student) { setEditing(student); setUnlockedFields({}); setSelectedDept(student.department || ''); setModalOpen(true); }
+  function getDefaultDateTimeLocal() { const now = new Date(); now.setMinutes(now.getMinutes() - now.getTimezoneOffset()); return now.toISOString().slice(0, 16); }
   const isDisabled = (fieldName: string) => !!editing && !unlockedFields[fieldName];
-  const handleEdit = (fieldName: string) => () => setUnlockedFields(prev => {
-    const next = { ...prev, [fieldName]: true };
-    if (fieldName === 'department') next.major = true;
-    if (fieldName === 'major') next.department = true;
-    return next;
-  });
-
-  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    const formData = new FormData(e.currentTarget);
-    const data = Object.fromEntries(formData);
-
-    // Cross validate major code in studentCode and className
-    if (data.major && selectedDept) {
-      const majorObj = MAJORS.find(m => m.name === data.major && m.dept === selectedDept);
-      if (majorObj) {
-        if (data.studentCode) {
-          const m = String(data.studentCode).match(/^[a-zA-Z]{1,2}\d{2}[a-zA-Z]{2}([a-zA-Z]{2})\d{3,4}$/);
-          if (m && m[1] !== majorObj.code) {
-            toast.error(`Mã sinh viên không khớp với ngành ${data.major} (Phải chứa mã ${majorObj.code})`);
-            return;
-          }
-        }
-        if (data.className) {
-          const m = String(data.className).match(/^[a-zA-Z]{1,2}\d{2}[a-zA-Z]{2}([a-zA-Z]{2})\d{2}-[a-zA-Z0-9]{1,2}$/);
-          if (m && m[1] !== majorObj.code) {
-            toast.error(`Mã lớp không khớp với ngành ${data.major} (Phải chứa mã ${majorObj.code})`);
-            return;
-          }
-        }
-      }
-    }
-
-    try {
-      if (editing) {
-        await updateMut.mutateAsync({ id: editing._id, data: data as Record<string, unknown> });
-        toast.success('Cập nhật sinh viên thành công');
-      } else {
-        await createMut.mutateAsync(data as Partial<Student>);
-        toast.success('Thêm sinh viên thành công');
-      }
-      setModalOpen(false);
-    } catch (err: any) {
-      const msg = err.response?.data?.message || err.message || 'Thao tác thất bại';
-      if (msg.toLowerCase().includes('đã tồn tại')) {
-        try {
-          const res = await apiClient.get('/students', { params: { keyword: data.studentCode } });
-          if (res.data?.data?.items?.length > 0) {
-            setConfirmWaitingStudent(res.data.data.items[0]);
-            return;
-          }
-        } catch (e) {
-          // ignore
-        }
-      }
-      toast.error(msg);
-    }
+  const handleEdit = (fieldName: string) => () => setUnlockedFields(prev => { const next = { ...prev, [fieldName]: true }; if (fieldName === 'department') next.major = true; if (fieldName === 'major') next.department = true; return next; });
+  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault(); const formValues = Object.fromEntries(new FormData(event.currentTarget));
+    if (formValues.major && selectedDept) { const majorObj = MAJORS.find(major => major.name === formValues.major && major.dept === selectedDept); if (majorObj) { const studentCodeMatch = String(formValues.studentCode || '').match(/^[a-zA-Z]{1,2}\d{2}[a-zA-Z]{2}([a-zA-Z]{2})\d{3,4}$/); if (studentCodeMatch && studentCodeMatch[1] !== majorObj.code) { toast.error('M\u00e3 sinh vi\u00ean kh\u00f4ng kh\u1edbp v\u1edbi ng\u00e0nh ' + formValues.major + ' (Ph\u1ea3i ch\u1ee9a m\u00e3 ' + majorObj.code + ')'); return; } const classMatch = String(formValues.className || '').match(/^[a-zA-Z]{1,2}\d{2}[a-zA-Z]{2}([a-zA-Z]{2})\d{2}-[a-zA-Z0-9]{1,2}$/); if (classMatch && classMatch[1] !== majorObj.code) { toast.error('M\u00e3 l\u1edbp kh\u00f4ng kh\u1edbp v\u1edbi ng\u00e0nh ' + formValues.major + ' (Ph\u1ea3i ch\u1ee9a m\u00e3 ' + majorObj.code + ')'); return; } } }
+    try { if (editing) { await updateMut.mutateAsync({ id: editing._id, data: formValues as Record<string, unknown> }); toast.success('C\u1eadp nh\u1eadt sinh vi\u00ean th\u00e0nh c\u00f4ng'); } else { await createMut.mutateAsync(formValues as Partial<Student>); toast.success('Th\u00eam sinh vi\u00ean th\u00e0nh c\u00f4ng'); } setModalOpen(false); } catch (err: any) { const message = err.response?.data?.message || err.message || 'Thao t\u00e1c th\u1ea5t b\u1ea1i'; if (message.toLowerCase().includes('\u0111\u00e3 t\u1ed3n t\u1ea1i')) { try { const res = await apiClient.get('/students', { params: { keyword: formValues.studentCode } }); if (res.data?.data?.items?.length > 0) { setConfirmWaitingStudent(res.data.data.items[0]); setWaitingRegisteredAt(getDefaultDateTimeLocal()); return; } } catch {} } toast.error(message); }
   }
-
-  async function handleCheckStudentCode(e: React.FocusEvent<HTMLInputElement>) {
-    if (editing) return;
-    const code = e.target.value.trim();
-    if (!code) return;
-    try {
-      const res = await apiClient.get('/students', { params: { keyword: code } });
-      if (res.data?.data?.items?.length > 0) {
-        const student = res.data.data.items.find((s: any) => s.studentCode === code);
-        if (student) {
-          setConfirmWaitingStudent(student);
-        }
-      }
-    } catch (err) {
-      // ignore
-    }
-  }
-
-  const facultyOptions = (faculties || []).map((f: string) => ({ value: f, label: f }));
-
-  const residenceOptions = [
-    { value: 'NOT_RESIDING', label: 'Không ở' },
-    { value: 'PENDING_ROOM', label: 'Chưa có phòng' },
-    { value: 'RESIDING', label: 'Đã có phòng' }
-  ];
-
-  const genderOptions = [
-    { value: 'MALE', label: 'Nam' },
-    { value: 'FEMALE', label: 'Nữ' }
-  ];
-
-  return (
-    <div className="flex flex-col gap-6">
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-        <Card className="flex min-h-16 items-center justify-between gap-3 border border-border p-4 shadow-sm">
-          <span className="text-sm font-medium text-text-secondary">Tổng sinh viên</span>
-          <span className="shrink-0 text-xl font-semibold text-text-primary">{studentStats?.total || 0}</span>
-        </Card>
-        <Card className="flex min-h-16 items-center justify-between gap-3 border border-border p-4 shadow-sm">
-          <span className="text-sm font-medium text-text-secondary">Chưa có phòng</span>
-          <span className="shrink-0 text-xl font-semibold text-text-primary">{studentStats?.pending || 0}</span>
-        </Card>
-        <Card className="flex min-h-16 items-center justify-between gap-3 border border-border p-4 shadow-sm">
-          <span className="text-sm font-medium text-text-secondary">Đang lưu trú</span>
-          <span className="shrink-0 text-xl font-semibold text-text-primary">{studentStats?.residing || 0}</span>
-        </Card>
-        <Card className="flex min-h-16 items-center justify-between gap-3 border border-border p-4 shadow-sm">
-          <span className="text-sm font-medium text-text-secondary">Không ở</span>
-          <span className="shrink-0 text-xl font-semibold text-text-primary">{studentStats?.inactive || 0}</span>
-        </Card>
-      </div>
-      
-      <Card>
-        <div className="mb-4 flex flex-wrap items-center gap-4">
-          <div className="relative w-full sm:w-72">
-            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-secondary" />
-            <input
-              className="w-full rounded-[var(--radius-pill)] border border-border bg-bg-page py-2 pl-9 pr-4 text-sm outline-none focus:border-primary"
-              placeholder="Tìm mã SV, tên, email..."
-              value={keyword}
-              onChange={e => { setKeyword(e.target.value); setPage(1); }}
-            />
-          </div>
-          <Select options={genderOptions} placeholder="Tất cả giới tính" value={genderFilter} onChange={e => { setGenderFilter(e.target.value); setPage(1); }} />
-          <Select options={facultyOptions} placeholder="Tất cả khoa" value={deptFilter} onChange={e => { setDeptFilter(e.target.value); setPage(1); }} />
-          <Select options={residenceOptions} placeholder="Tất cả trạng thái" value={residenceFilter} onChange={e => { setResidenceFilter(e.target.value); setPage(1); }} />
-          <label className="inline-flex h-10 items-center gap-2 rounded-[var(--radius-pill)] border border-border bg-bg-page px-4 text-sm font-medium text-text-primary">
-            <input
-              type="checkbox"
-              checked={freshmanOnly}
-              onChange={e => { setFreshmanOnly(e.target.checked); setPage(1); }}
-              className="h-4 w-4 accent-primary"
-            />
-            Tân sinh viên
-          </label>
-          <Button onClick={openCreate} className="ml-auto shrink-0 gap-2">
-            <Plus size={16} /> Thêm sinh viên
-          </Button>
-        </div>
-
-        {isLoading ? (
-          <div className="p-4"><TableSkeleton columns={7} rows={5} /></div>
-        ) : (
-          <>
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-border text-left text-text-secondary">
-                    <th className="py-3 pr-4 font-medium">MSSV</th>
-                    <th className="py-3 pr-4 font-medium">Họ tên</th>
-                    <th className="py-3 pr-4 font-medium">Giới tính</th>
-                    <th className="py-3 pr-4 font-medium">Khoa</th>
-                    <th className="py-3 pr-4 font-medium">Khóa</th>
-                    <th className="py-3 pr-4 font-medium">Cư trú</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {data?.items.map(s => (
-                    <tr key={s._id} onClick={() => setViewingStudent(s)} className="border-b border-border last:border-0 cursor-pointer hover:bg-bg-page transition-colors">
-                      <td className="py-3 pr-4 font-medium">{s.studentCode}</td>
-                      <td className="py-3 pr-4">
-                        {s.fullName}
-                        {freshmanSet.has(s.academicYear || '') && (
-                          <span className="ml-2 inline-flex rounded-[var(--radius-pill)] bg-status-pending-bg px-2 py-0.5 text-[10px] font-semibold text-status-pending-text">Tân SV</span>
-                        )}
-                      </td>
-                      <td className="py-3 pr-4"><Badge value={s.gender} /></td>
-                      <td className="py-3 pr-4">{s.department || '—'}</td>
-                      <td className="py-3 pr-4">{s.academicYear || '—'}</td>
-                      <td className="py-3 pr-4"><Badge value={s.residenceType} /></td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-            {data && data.pagination.totalPages > 1 && (
-              <Pagination currentPage={page} totalPages={data.pagination.totalPages} onPageChange={setPage} />
-            )}
-          </>
-        )}
-      </Card>
-
-      <Modal open={modalOpen} onClose={() => setModalOpen(false)} title={editing ? 'Hồ sơ sinh viên' : 'Thêm sinh viên'}>
-        <form onSubmit={handleSubmit} className="flex flex-col gap-1">
-          {editing && (
-            <div className="mb-4 flex flex-col items-center justify-center gap-2 border-b border-border pb-6 pt-2">
-              <div className="flex h-16 w-16 items-center justify-center rounded-full bg-primary/10 text-primary">
-                <User size={32} />
-              </div>
-              <div className="text-center">
-                <h3 className="text-lg font-bold text-text-primary">{editing.fullName}</h3>
-                <p className="text-sm text-text-secondary">{editing.studentCode}</p>
-              </div>
-            </div>
-          )}
-
-          {!editing || unlockedFields['studentCode'] ? (
-            <div className="mb-3"><Input label="Mã sinh viên" name="studentCode" defaultValue={editing?.studentCode} placeholder="VD: N24DCCN010" required disabled={isDisabled('studentCode')} onEdit={handleEdit('studentCode')} onBlur={handleCheckStudentCode} /></div>
-          ) : (
-            <div className="group flex items-center justify-between rounded-[var(--radius-sm)] border border-transparent px-3 py-2 transition-colors hover:bg-bg-page">
-              <span className="text-sm text-text-secondary">Mã sinh viên</span>
-              <div className="flex items-center gap-3">
-                <span className="text-sm font-medium text-text-primary">{editing.studentCode}</span>
-                <button type="button" onClick={handleEdit('studentCode')} className="text-text-secondary opacity-0 transition-all hover:text-primary group-hover:opacity-100"><Edit2 size={14} /></button>
-              </div>
-            </div>
-          )}
-
-          {!editing || unlockedFields['fullName'] ? (
-            <div className="mb-3"><Input label="Họ tên" name="fullName" defaultValue={editing?.fullName} required disabled={isDisabled('fullName')} onEdit={handleEdit('fullName')} /></div>
-          ) : (
-            <div className="group flex items-center justify-between rounded-[var(--radius-sm)] border border-transparent px-3 py-2 transition-colors hover:bg-bg-page">
-              <span className="text-sm text-text-secondary">Họ tên</span>
-              <div className="flex items-center gap-3">
-                <span className="text-sm font-medium text-text-primary">{editing.fullName}</span>
-                <button type="button" onClick={handleEdit('fullName')} className="text-text-secondary opacity-0 transition-all hover:text-primary group-hover:opacity-100"><Edit2 size={14} /></button>
-              </div>
-            </div>
-          )}
-
-          {!editing || unlockedFields['gender'] ? (
-            <div className="mb-3"><Select label="Giới tính" name="gender" options={[{ value: 'MALE', label: 'Nam' }, { value: 'FEMALE', label: 'Nữ' }]} defaultValue={editing?.gender} disabled={isDisabled('gender')} onEdit={handleEdit('gender')} /></div>
-          ) : (
-            <div className="group flex items-center justify-between rounded-[var(--radius-sm)] border border-transparent px-3 py-2 transition-colors hover:bg-bg-page">
-              <span className="text-sm text-text-secondary">Giới tính</span>
-              <div className="flex items-center gap-3">
-                <span className="text-sm font-medium text-text-primary">{editing.gender === 'MALE' ? 'Nam' : editing.gender === 'FEMALE' ? 'Nữ' : '—'}</span>
-                <button type="button" onClick={handleEdit('gender')} className="text-text-secondary opacity-0 transition-all hover:text-primary group-hover:opacity-100"><Edit2 size={14} /></button>
-              </div>
-            </div>
-          )}
-
-          {!editing || unlockedFields['email'] ? (
-            <div className="mb-3"><Input label="Email" name="email" type="email" defaultValue={editing?.email} required disabled={isDisabled('email')} onEdit={handleEdit('email')} /></div>
-          ) : (
-            <div className="group flex items-center justify-between rounded-[var(--radius-sm)] border border-transparent px-3 py-2 transition-colors hover:bg-bg-page">
-              <span className="text-sm text-text-secondary">Email</span>
-              <div className="flex items-center gap-3">
-                <span className="text-sm font-medium text-text-primary">{editing.email || '—'}</span>
-                <button type="button" onClick={handleEdit('email')} className="text-text-secondary opacity-0 transition-all hover:text-primary group-hover:opacity-100"><Edit2 size={14} /></button>
-              </div>
-            </div>
-          )}
-
-          {!editing || unlockedFields['department'] ? (
-            <div className="mb-3"><Select label="Khoa" name="department" options={facultyOptions} placeholder="Chọn khoa" value={selectedDept} onChange={(e) => setSelectedDept(e.target.value)} disabled={isDisabled('department')} onEdit={handleEdit('department')} /></div>
-          ) : (
-            <div className="group flex items-center justify-between rounded-[var(--radius-sm)] border border-transparent px-3 py-2 transition-colors hover:bg-bg-page">
-              <span className="text-sm text-text-secondary">Khoa</span>
-              <div className="flex items-center gap-3">
-                <span className="text-sm font-medium text-text-primary">{editing.department || '—'}</span>
-                <button type="button" onClick={handleEdit('department')} className="text-text-secondary opacity-0 transition-all hover:text-primary group-hover:opacity-100"><Edit2 size={14} /></button>
-              </div>
-            </div>
-          )}
-
-          {!editing || unlockedFields['major'] ? (
-            <div className="mb-3">
-              <Select
-                label="Ngành"
-                name="major"
-                options={MAJORS.filter(m => m.dept === selectedDept).map(m => ({ value: m.name, label: m.name }))}
-                placeholder="Chọn ngành"
-                defaultValue={editing?.major}
-                disabled={isDisabled('major') || !selectedDept}
-                onEdit={handleEdit('major')}
-              />
-            </div>
-          ) : (
-            <div className="group flex items-center justify-between rounded-[var(--radius-sm)] border border-transparent px-3 py-2 transition-colors hover:bg-bg-page">
-              <span className="text-sm text-text-secondary">Ngành</span>
-              <div className="flex items-center gap-3">
-                <span className="text-sm font-medium text-text-primary">{editing.major || '—'}</span>
-                <button type="button" onClick={handleEdit('major')} className="text-text-secondary opacity-0 transition-all hover:text-primary group-hover:opacity-100"><Edit2 size={14} /></button>
-              </div>
-            </div>
-          )}
-
-          {!editing || unlockedFields['className'] ? (
-            <div className="mb-3"><Input label="Lớp" name="className" defaultValue={editing?.className} placeholder="VD: D24CQCN01-N" disabled={isDisabled('className')} onEdit={handleEdit('className')} /></div>
-          ) : (
-            <div className="group flex items-center justify-between rounded-[var(--radius-sm)] border border-transparent px-3 py-2 transition-colors hover:bg-bg-page">
-              <span className="text-sm text-text-secondary">Lớp</span>
-              <div className="flex items-center gap-3">
-                <span className="text-sm font-medium text-text-primary">{editing.className || '—'}</span>
-                <button type="button" onClick={handleEdit('className')} className="text-text-secondary opacity-0 transition-all hover:text-primary group-hover:opacity-100"><Edit2 size={14} /></button>
-              </div>
-            </div>
-          )}
-
-          {!editing ? (
-            <div className="mb-3">
-              <label className="text-sm font-medium text-text-primary">Khóa</label>
-              <div className="mt-1.5 w-full rounded-[var(--radius-sm)] border border-border bg-bg-page px-3.5 py-2.5 text-sm text-text-secondary">
-                Sẽ tự động tạo từ Mã sinh viên
-              </div>
-            </div>
-          ) : (
-            <div className="group flex items-center justify-between rounded-[var(--radius-sm)] border border-transparent px-3 py-2 transition-colors hover:bg-bg-page">
-              <span className="text-sm text-text-secondary">Khóa</span>
-              <div className="flex items-center gap-3">
-                <span className="text-sm font-medium text-text-primary">{editing.academicYear || '—'}</span>
-              </div>
-            </div>
-          )}
-
-          <div className="mt-2 flex gap-3">
-            <Button type="submit" loading={createMut.isPending || updateMut.isPending} className="flex-1" disabled={!!editing && Object.keys(unlockedFields).length === 0}>
-              {editing ? 'Cập nhật' : 'Thêm mới'}
-            </Button>
-          </div>
-        </form>
-      </Modal>
-
-      <ConfirmDialog
-        open={!!confirmWaitingStudent}
-        onClose={() => setConfirmWaitingStudent(null)}
-        onConfirm={() => {
-          if (confirmWaitingStudent) {
-            waitingListMut.mutate(confirmWaitingStudent._id, {
-              onSuccess: () => toast.success(`Đã thêm ${confirmWaitingStudent.fullName} vào danh sách chờ`),
-              onError: (e: any) => toast.error(e.response?.data?.message || 'Không thể thêm vào danh sách chờ')
-            });
-            setConfirmWaitingStudent(null);
-            setModalOpen(false);
-          }
-        }}
-        title="Sinh viên đã tồn tại"
-        message={confirmWaitingStudent ? `Mã sinh viên ${confirmWaitingStudent.studentCode} đã tồn tại. Bạn có muốn đưa sinh viên này vào danh sách chờ xếp phòng không?` : ''}
-        confirmText="Đưa vào hàng chờ"
-      />
-
-      {viewingStudent && (
-        <StudentDetailModal
-          student={viewingStudent}
-          onClose={() => setViewingStudent(null)}
-        />
-      )}
-    </div>
-  );
+  async function handleCheckStudentCode(event: React.FocusEvent<HTMLInputElement>) { if (editing) return; const code = event.target.value.trim(); if (!code) return; try { const res = await apiClient.get('/students', { params: { keyword: code } }); const student = res.data?.data?.items?.find((item: Student) => item.studentCode === code); if (student) { setConfirmWaitingStudent(student); setWaitingRegisteredAt(getDefaultDateTimeLocal()); } } catch {} }
+  const facultyOptions = (faculties || []).map((faculty: string) => ({ value: faculty, label: faculty }));
+  const residenceOptions = [{ value: 'NOT_RESIDING', label: TEXT.notResiding }, { value: 'PENDING_ROOM', label: TEXT.pendingRoom }, { value: 'RESIDING', label: '\u0110\u00e3 c\u00f3 ph\u00f2ng' }]; const genderOptions = [{ value: 'MALE', label: 'Nam' }, { value: 'FEMALE', label: TEXT.female }];
+  return <div className="flex flex-col gap-6">
+    <div className="grid grid-cols-2 gap-3 md:grid-cols-4"><Stat label={TEXT.totalStudents} value={studentStats?.total || 0} /><Stat label={TEXT.pendingRoom} value={studentStats?.pending || 0} /><Stat label={TEXT.residing} value={studentStats?.residing || 0} /><Stat label={TEXT.notResiding} value={studentStats?.inactive || 0} /></div>
+    <Card><div className="mb-4 flex flex-wrap items-center gap-4"><div className="relative w-full sm:w-72"><Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-secondary" /><input className="w-full rounded-[var(--radius-pill)] border border-border bg-bg-page py-2 pl-9 pr-4 text-sm outline-none focus:border-primary" placeholder={TEXT.searchPlaceholder} value={keyword} onChange={event => { setKeyword(event.target.value); setPage(1); }} /></div><Select options={genderOptions} placeholder={TEXT.allGenders} value={genderFilter} onChange={event => { setGenderFilter(event.target.value); setPage(1); }} /><Select options={facultyOptions} placeholder={TEXT.allDepartments} value={deptFilter} onChange={event => { setDeptFilter(event.target.value); setPage(1); }} /><Select options={residenceOptions} placeholder={TEXT.allStatuses} value={residenceFilter} onChange={event => { setResidenceFilter(event.target.value); setPage(1); }} /><label className="inline-flex h-10 items-center gap-2 rounded-[var(--radius-pill)] border border-border bg-bg-page px-4 text-sm font-medium text-text-primary"><input type="checkbox" checked={freshmanOnly} onChange={event => { setFreshmanOnly(event.target.checked); setPage(1); }} className="h-4 w-4 accent-primary" />{TEXT.freshman}</label><Button onClick={openCreate} className="ml-auto shrink-0 gap-2"><Plus size={16} /> {TEXT.addStudent}</Button></div>
+    {isLoading ? <div className="p-4"><TableSkeleton columns={8} rows={5} /></div> : <><div className="overflow-x-auto"><table className="w-full text-sm"><thead><tr className="border-b border-border text-left text-text-secondary"><th className="py-3 pr-4 font-medium">MSSV</th><th className="py-3 pr-4 font-medium">{TEXT.fullName}</th><th className="py-3 pr-4 font-medium">{TEXT.gender}</th><th className="py-3 pr-4 font-medium">{TEXT.phone}</th><th className="py-3 pr-4 font-medium">Khoa</th><th className="py-3 pr-4 font-medium">{TEXT.academicYear}</th><th className="py-3 pr-4 font-medium">{TEXT.residence}</th><th className="py-3 pr-4 font-medium">{TEXT.actions}</th></tr></thead><tbody>{data?.items.map(student => <tr key={student._id} onClick={() => setViewingStudent(student)} className="border-b border-border last:border-0 cursor-pointer hover:bg-bg-page transition-colors"><td className="py-3 pr-4 font-medium">{student.studentCode}</td><td className="py-3 pr-4">{student.fullName}{freshmanSet.has(student.academicYear || '') && <span className="ml-2 inline-flex rounded-[var(--radius-pill)] bg-status-pending-bg px-2 py-0.5 text-[10px] font-semibold text-status-pending-text">{TEXT.freshmanShort}</span>}</td><td className="py-3 pr-4"><Badge value={student.gender} /></td><td className="py-3 pr-4">{student.phone || TEXT.notUpdated}</td><td className="py-3 pr-4">{student.department || '\u2014'}</td><td className="py-3 pr-4">{student.academicYear || '\u2014'}</td><td className="py-3 pr-4"><Badge value={student.residenceType} /></td><td className="py-3 pr-4"><button type="button" onClick={(event) => { event.stopPropagation(); openEdit(student); }} className="rounded p-1.5 text-text-secondary transition-colors hover:bg-bg-page hover:text-primary" title={TEXT.edit}><Edit2 size={16} /></button></td></tr>)}</tbody></table></div>{data && data.pagination.totalPages > 1 && <Pagination currentPage={page} totalPages={data.pagination.totalPages} onPageChange={setPage} />}</>}</Card>
+    <Modal open={modalOpen} onClose={() => setModalOpen(false)} title={editing ? TEXT.profileTitle : TEXT.addStudent}><form onSubmit={handleSubmit} className="flex flex-col gap-1">{editing && <div className="mb-4 flex flex-col items-center justify-center gap-2 border-b border-border pb-6 pt-2"><div className="flex h-16 w-16 items-center justify-center rounded-full bg-primary/10 text-primary"><User size={32} /></div><div className="text-center"><h3 className="text-lg font-bold text-text-primary">{editing.fullName}</h3><p className="text-sm text-text-secondary">{editing.studentCode}</p></div></div>}{renderEditableInput('studentCode', TEXT.studentCode, editing?.studentCode, { required: true, placeholder: 'VD: N24DCCN010', onBlur: handleCheckStudentCode })}{renderEditableInput('fullName', TEXT.fullName, editing?.fullName, { required: true })}{!editing || unlockedFields.gender ? <div className="mb-3"><Select label={TEXT.gender} name="gender" options={genderOptions} defaultValue={editing?.gender} disabled={isDisabled('gender')} onEdit={handleEdit('gender')} /></div> : renderLockedRow('gender', TEXT.gender, editing.gender === 'MALE' ? 'Nam' : editing.gender === 'FEMALE' ? TEXT.female : '\u2014')}{renderEditableInput('email', 'Email', editing?.email, { required: true, type: 'email' })}{renderEditableInput('phone', TEXT.phone, editing?.phone || '', { required: true, placeholder: 'VD: 0912345678' })}{renderEditableInput('address', TEXT.address, editing?.address || '', { required: true, placeholder: TEXT.addressPlaceholder })}{!editing && <div className="mb-3"><Input label={TEXT.registeredAt} name="registeredAt" type="datetime-local" defaultValue={getDefaultDateTimeLocal()} required /></div>}{!editing || unlockedFields.department ? <div className="mb-3"><Select label="Khoa" name="department" options={facultyOptions} placeholder={TEXT.selectDepartment} value={selectedDept} onChange={(event) => setSelectedDept(event.target.value)} disabled={isDisabled('department')} onEdit={handleEdit('department')} /></div> : renderLockedRow('department', 'Khoa', editing.department || '\u2014')}{!editing || unlockedFields.major ? <div className="mb-3"><Select label={TEXT.major} name="major" options={MAJORS.filter(major => major.dept === selectedDept).map(major => ({ value: major.name, label: major.name }))} placeholder={TEXT.selectMajor} defaultValue={editing?.major} disabled={isDisabled('major') || !selectedDept} onEdit={handleEdit('major')} /></div> : renderLockedRow('major', TEXT.major, editing.major || '\u2014')}{renderEditableInput('className', TEXT.className, editing?.className, { placeholder: 'VD: D24CQCN01-N' })}{!editing ? <div className="mb-3"><label className="text-sm font-medium text-text-primary">{TEXT.academicYear}</label><div className="mt-1.5 w-full rounded-[var(--radius-sm)] border border-border bg-bg-page px-3.5 py-2.5 text-sm text-text-secondary">{TEXT.autoAcademicYear}</div></div> : renderLockedRow('academicYear', TEXT.academicYear, editing.academicYear || '\u2014', false)}<div className="mt-2 flex gap-3"><Button type="submit" loading={createMut.isPending || updateMut.isPending} className="flex-1" disabled={!!editing && Object.keys(unlockedFields).length === 0}>{editing ? TEXT.update : TEXT.addNew}</Button></div></form></Modal>
+    <Modal open={!!confirmWaitingStudent} onClose={() => setConfirmWaitingStudent(null)} title={TEXT.duplicateTitle}><form className="flex flex-col gap-4" onSubmit={(event) => { event.preventDefault(); if (!confirmWaitingStudent) return; waitingListMut.mutate({ id: confirmWaitingStudent._id, registeredAt: waitingRegisteredAt }, { onSuccess: () => { toast.success('\u0110\u00e3 th\u00eam ' + confirmWaitingStudent.fullName + ' v\u00e0o danh s\u00e1ch ch\u1edd'); setConfirmWaitingStudent(null); setModalOpen(false); }, onError: (err: any) => toast.error(err.response?.data?.message || 'Kh\u00f4ng th\u1ec3 th\u00eam v\u00e0o danh s\u00e1ch ch\u1edd') }); }}><p className="text-sm text-text-secondary">{TEXT.studentCode} {confirmWaitingStudent?.studentCode}. {TEXT.duplicateMessage}</p><Input label={TEXT.registeredAt} type="datetime-local" value={waitingRegisteredAt} onChange={(event) => setWaitingRegisteredAt(event.target.value)} required /><div className="flex justify-end gap-3"><Button type="button" variant="secondary" onClick={() => setConfirmWaitingStudent(null)}>{TEXT.cancel}</Button><Button type="submit" loading={waitingListMut.isPending}>{TEXT.addToWaiting}</Button></div></form></Modal>
+    {viewingStudent && <StudentDetailModal student={viewingStudent} onClose={() => setViewingStudent(null)} />}
+  </div>;
+  function renderEditableInput(field: string, label: string, value?: string, options: { required?: boolean; placeholder?: string; type?: string; onBlur?: React.FocusEventHandler<HTMLInputElement> } = {}) { if (!editing || unlockedFields[field]) return <div className="mb-3"><Input label={label} name={field} type={options.type} defaultValue={value} placeholder={options.placeholder} required={options.required} disabled={isDisabled(field)} onEdit={handleEdit(field)} onBlur={options.onBlur} /></div>; return renderLockedRow(field, label, value || (field === 'phone' || field === 'address' ? TEXT.notUpdated : '\u2014')); }
+  function renderLockedRow(field: string, label: string, value: string, editable = true) { return <div className="group flex items-center justify-between rounded-[var(--radius-sm)] border border-transparent px-3 py-2 transition-colors hover:bg-bg-page"><span className="text-sm text-text-secondary">{label}</span><div className="flex items-center gap-3"><span className="text-sm font-medium text-text-primary">{value}</span>{editable && <button type="button" onClick={handleEdit(field)} className="text-text-secondary opacity-0 transition-all hover:text-primary group-hover:opacity-100"><Edit2 size={14} /></button>}</div></div>; }
+  function Stat({ label, value }: { label: string; value: number }) { return <Card className="flex min-h-16 items-center justify-between gap-3 border border-border p-4 shadow-sm"><span className="text-sm font-medium text-text-secondary">{label}</span><span className="shrink-0 text-xl font-semibold text-text-primary">{value}</span></Card>; }
 }

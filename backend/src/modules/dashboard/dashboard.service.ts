@@ -2,17 +2,14 @@ import { Student } from '../../models/student.model.js';
 import { User } from '../../models/user.model.js';
 import { Permission } from '../../models/permission.model.js';
 import { RoomAssignment, RoomAssignmentStatus } from '../../models/roomAssignment.model.js';
-import { UtilityBill } from '../../models/utilityBill.model.js';
 import { UtilityBillMember } from '../../models/utilityBillMember.model.js';
-import { StudentRequest } from '../../models/studentRequest.model.js';
-import { Violation } from '../../models/violation.model.js';
 import { Notification } from '../../models/notification.model.js';
 import { NotificationReceiver } from '../../models/notificationReceiver.model.js';
 import { ActivityLog } from '../../models/activityLog.model.js';
 import { Semester } from '../../models/semester.model.js';
-import { ResidenceType, SemesterStatus, BillStatus, BillMemberStatus, RequestStatus, NotificationScope } from '../../common/constants/enums.js';
+import { SemesterStatus, BillMemberStatus, NotificationScope } from '../../common/constants/enums.js';
 
-
+// Tổng hợp số liệu dashboard dành cho admin
 export async function getAdminStats() {
   const sevenDaysAgo = new Date();
   sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
@@ -27,6 +24,7 @@ export async function getAdminStats() {
   return { totalUsers, activeUsers, totalPermissions, recentLogs };
 }
 
+// Tổng hợp số liệu dashboard dành cho sinh viên
 export async function getStudentStats(userId: string) {
   const student = await Student.findOne({ userId }).lean();
   if (!student) return { currentRoom: null, unreadNotifications: 0, unpaidBills: 0 };

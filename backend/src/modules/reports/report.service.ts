@@ -12,13 +12,15 @@ import { Violation } from '../../models/violation.model.js';
 import { StudentRequest } from '../../models/studentRequest.model.js';
 import { ResidenceType, SemesterStatus, BillStatus } from '../../common/constants/enums.js';
 
+// Xác định học kỳ đang hoạt động khi request không truyền học kỳ
 async function getActiveSemesterId(semesterId?: string) {
   if (semesterId) return new mongoose.Types.ObjectId(semesterId);
   const active = await Semester.findOne({ status: SemesterStatus.ACTIVE }).select('_id').lean();
   return active?._id;
 }
 
-export async function residenceReport(semesterId?: string) {
+// Tạo báo cáo tổng quan sinh viên đang cư trú
+export async function residenceReport(_semesterId?: string) {
   const total = await Student.countDocuments({ residenceType: ResidenceType.RESIDING });
 
   const [byGender, byDepartment, freshmanCount] = await Promise.all([
@@ -42,6 +44,7 @@ export async function residenceReport(semesterId?: string) {
   };
 }
 
+// Tạo báo cáo sức chứa ký túc xá theo học kỳ
 export async function dormitoryCapacityReport(semesterId?: string) {
   const semId = await getActiveSemesterId(semesterId);
 
@@ -78,6 +81,7 @@ export async function dormitoryCapacityReport(semesterId?: string) {
   };
 }
 
+// Tạo báo cáo hóa đơn điện nước theo tháng năm
 export async function utilityReport(month?: number, year?: number) {
   const match: Record<string, unknown> = {};
   if (month) match.month = month;
@@ -119,6 +123,7 @@ export async function utilityReport(month?: number, year?: number) {
   };
 }
 
+// Tạo báo cáo thanh toán theo tháng năm
 export async function paymentReport(month?: number, year?: number) {
   const billMatch: Record<string, unknown> = {};
   if (month) billMatch.month = month;
@@ -160,6 +165,7 @@ export async function paymentReport(month?: number, year?: number) {
   };
 }
 
+// Tạo báo cáo vi phạm theo học kỳ
 export async function violationReport(semesterId?: string) {
   const semId = await getActiveSemesterId(semesterId);
   const match: Record<string, unknown> = {};
@@ -192,7 +198,8 @@ export async function violationReport(semesterId?: string) {
   };
 }
 
-export async function requestReport(semesterId?: string) {
+// Tạo báo cáo yêu cầu sinh viên
+export async function requestReport(_semesterId?: string) {
   const match: Record<string, unknown> = {};
 
   const [byType, byStatus, avgProcessing, total] = await Promise.all([
@@ -216,6 +223,7 @@ export async function requestReport(semesterId?: string) {
   };
 }
 
+// Tạo báo cáo xu hướng giữa các học kỳ
 export async function trendReport(startSemesterId?: string, endSemesterId?: string) {
   const match: Record<string, any> = {
     status: { $in: [SemesterStatus.ACTIVE, SemesterStatus.FINISHED] }

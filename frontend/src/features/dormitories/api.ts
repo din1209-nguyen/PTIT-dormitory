@@ -1,14 +1,16 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import apiClient from '@/lib/api/apiClient';
-import type { Building, Floor, Room, Bed } from '@/types/dormitory';
+import type { Building, Floor, Room, Bed, PopulatedRoom, RoomListFilters } from '@/types/dormitory';
 import type { ApiResponse } from '@/types/api';
 
+// Lấy danh sách tòa nhà kèm thống kê tổng quan
 export function useBuildings() {
   return useQuery({
     queryKey: ['buildings'],
     queryFn: () => apiClient.get<ApiResponse<Building[]>>('/buildings').then(r => r.data.data),
   });
 }
+// Tạo tòa nhà mới
 export function useCreateBuilding() {
   const qc = useQueryClient();
   return useMutation({
@@ -16,6 +18,7 @@ export function useCreateBuilding() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['buildings'] }),
   });
 }
+// Cập nhật tòa nhà và làm mới dữ liệu phụ thuộc
 export function useUpdateBuilding() {
   const qc = useQueryClient();
   return useMutation({
@@ -29,6 +32,7 @@ export function useUpdateBuilding() {
     },
   });
 }
+// Xóa tòa nhà khi backend cho phép
 export function useDeleteBuilding() {
   const qc = useQueryClient();
   return useMutation({
@@ -37,6 +41,7 @@ export function useDeleteBuilding() {
   });
 }
 
+// Lấy danh sách tầng theo tòa nhà
 export function useFloors(buildingId: string) {
   return useQuery({
     queryKey: ['floors', buildingId],
@@ -44,6 +49,7 @@ export function useFloors(buildingId: string) {
     enabled: !!buildingId,
   });
 }
+// Tạo tầng mới
 export function useCreateFloor() {
   const qc = useQueryClient();
   return useMutation({
@@ -51,6 +57,7 @@ export function useCreateFloor() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['floors'] }),
   });
 }
+// Cập nhật tầng và làm mới phòng giường liên quan
 export function useUpdateFloor() {
   const qc = useQueryClient();
   return useMutation({
@@ -63,6 +70,7 @@ export function useUpdateFloor() {
     },
   });
 }
+// Xóa tầng khi không còn dữ liệu chặn
 export function useDeleteFloor() {
   const qc = useQueryClient();
   return useMutation({
@@ -71,6 +79,7 @@ export function useDeleteFloor() {
   });
 }
 
+// Lấy danh sách phòng theo tầng
 export function useRooms(floorId: string) {
   return useQuery({
     queryKey: ['rooms', floorId],
@@ -79,14 +88,16 @@ export function useRooms(floorId: string) {
   });
 }
 
+// Lấy toàn bộ phòng đã populate tầng và tòa nhà
 export function useAllRooms() {
   return useQuery({
     queryKey: ['all-rooms'],
-    queryFn: () => apiClient.get<ApiResponse<any[]>>('/rooms?populate=true').then(r => r.data.data),
+    queryFn: () => apiClient.get<ApiResponse<PopulatedRoom[]>>('/rooms?populate=true').then(r => r.data.data),
   });
 }
 
-export function useRoomsList(filters: any) {
+// Lấy danh sách phòng theo bộ lọc quản lý
+export function useRoomsList(filters: RoomListFilters) {
   return useQuery({
     queryKey: ['rooms-list', filters],
     queryFn: () => {
@@ -95,10 +106,11 @@ export function useRoomsList(filters: any) {
       if (filters.genderType && filters.genderType !== 'ALL') params.append('genderType', filters.genderType);
       if (filters.buildingId) params.append('buildingId', filters.buildingId);
       if (filters.floorId) params.append('floorId', filters.floorId);
-      return apiClient.get<ApiResponse<any[]>>(`/rooms?${params.toString()}`).then(r => r.data.data);
+      return apiClient.get<ApiResponse<PopulatedRoom[]>>(`/rooms?${params.toString()}`).then(r => r.data.data);
     },
   });
 }
+// Tạo phòng mới và sinh giường tương ứng phía backend
 export function useCreateRoom() {
   const qc = useQueryClient();
   return useMutation({
@@ -106,6 +118,7 @@ export function useCreateRoom() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['rooms'] }),
   });
 }
+// Cập nhật thông tin phòng
 export function useUpdateRoom() {
   const qc = useQueryClient();
   return useMutation({
@@ -116,6 +129,7 @@ export function useUpdateRoom() {
     },
   });
 }
+// Xóa phòng khi không có sinh viên đang ở
 export function useDeleteRoom() {
   const qc = useQueryClient();
   return useMutation({
@@ -127,6 +141,7 @@ export function useDeleteRoom() {
   });
 }
 
+// Lấy danh sách giường theo phòng
 export function useBeds(roomId: string) {
   return useQuery({
     queryKey: ['beds', roomId],
@@ -134,6 +149,7 @@ export function useBeds(roomId: string) {
     enabled: !!roomId,
   });
 }
+// Tạo thêm giường cho phòng
 export function useCreateBed() {
   const qc = useQueryClient();
   return useMutation({
@@ -148,6 +164,7 @@ export function useCreateBed() {
     },
   });
 }
+// Cập nhật trạng thái giường
 export function useUpdateBed() {
   const qc = useQueryClient();
   return useMutation({
@@ -155,6 +172,7 @@ export function useUpdateBed() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['beds'] }),
   });
 }
+// Xóa giường khi backend cho phép
 export function useDeleteBed() {
   const qc = useQueryClient();
   return useMutation({
@@ -163,6 +181,7 @@ export function useDeleteBed() {
   });
 }
 
+// Lấy danh sách khoa/ngành cấu hình
 export function useFaculties() {
   return useQuery({
     queryKey: ['faculties'],

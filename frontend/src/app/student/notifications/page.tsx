@@ -1,6 +1,6 @@
 'use client';
 import { useState, useMemo } from 'react';
-import { Bell, Check } from 'lucide-react';
+import { Bell } from 'lucide-react';
 import { useMyNotifications, useMarkRead } from '@/features/notifications/api';
 import { Card } from '@/components/common/Card';
 import { Badge } from '@/components/common/Badge';

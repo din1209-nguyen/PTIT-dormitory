@@ -4,7 +4,7 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Responsi
 import { useTrendReport } from '@/features/reports/api';
 import { useSemesters } from '@/features/semesters/api';
 import { Card } from '@/components/common/Card';
-import { Users, Building2, Zap, CreditCard, AlertTriangle, MessageSquare } from 'lucide-react';
+import { Users, Building2, Zap, CreditCard, AlertTriangle, MessageSquare, Loader2 } from 'lucide-react';
 
 function formatMoney(n: number) { return n.toLocaleString('vi-VN') + ' đ'; }
 
@@ -21,7 +21,7 @@ export default function ReportsPage() {
   });
 
   if (isLoading) {
-    return <div className="p-8 text-center text-text-secondary">Đang tải dữ liệu báo cáo...</div>;
+    return <div className="flex justify-center p-8 text-text-secondary"><Loader2 className="w-8 h-8 animate-spin" /></div>;
   }
 
   if (!trends || trends.length === 0) {
