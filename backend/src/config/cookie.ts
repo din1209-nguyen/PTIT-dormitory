@@ -9,8 +9,13 @@ export function getRefreshCookieOptions(): CookieOptions {
   return {
     httpOnly: true,
     secure: env.NODE_ENV === 'production',
-    sameSite: 'lax',
+    sameSite: env.NODE_ENV === 'production' ? 'none' : 'lax',
     path: '/api/auth',
     maxAge: SEVEN_DAYS_MS,
   };
+}
+
+export function getClearRefreshCookieOptions(): CookieOptions {
+  const { maxAge: _maxAge, ...options } = getRefreshCookieOptions();
+  return options;
 }

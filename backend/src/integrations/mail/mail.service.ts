@@ -12,17 +12,23 @@ export async function queueEmail(params: { recipientEmail: string; subject: stri
       status: EmailStatus.PENDING,
     });
 
-    if (isMailConfigured()) {
-      try {
-        await sendMail({ to: params.recipientEmail, subject: params.subject, html: params.content });
-        log.status = EmailStatus.SENT;
-        log.sentAt = new Date();
-        await log.save();
-      } catch (err) {
-        log.status = EmailStatus.FAILED;
-        log.errorMessage = err instanceof Error ? err.message : 'Unknown error';
-        await log.save();
-      }
+    if (!isMailConfigured()) {
+      log.status = EmailStatus.FAILED;
+      log.errorMessage = 'SMTP is not fully configured';
+      await log.save();
+      return log;
+    }
+
+    try {
+      await sendMail({ to: params.recipientEmail, subject: params.subject, html: params.content });
+      log.status = EmailStatus.SENT;
+      log.sentAt = new Date();
+      await log.save();
+    } catch (err) {
+      log.status = EmailStatus.FAILED;
+      log.retryCount += 1;
+      log.errorMessage = err instanceof Error ? err.message : 'Unknown error';
+      await log.save();
     }
 
     return log;
@@ -46,6 +52,7 @@ export async function retryFailedEmails(maxRetries = 3) {
         log.sentAt = new Date();
       } else {
         log.retryCount += 1;
+        log.errorMessage = 'SMTP is not fully configured';
       }
     } catch (err) {
       log.retryCount += 1;

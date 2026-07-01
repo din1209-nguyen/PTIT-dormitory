@@ -75,7 +75,7 @@ export function Topbar() {
   }
 
   return (
-    <header className="flex h-16 items-center justify-between border-b border-border bg-bg-card px-6">
+    <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-border bg-bg-card px-6">
       <div className="flex items-center">
         {pageInfo ? (
           <h1 className="text-xl font-bold text-text-primary hidden sm:block">

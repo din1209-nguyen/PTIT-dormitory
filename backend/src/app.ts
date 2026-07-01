@@ -10,7 +10,7 @@ import apiRouter from './routes/index.js';
 import './models/index.js';
 
 const app = express();
-app.set('trust proxy', true);
+app.set('trust proxy', 1);
 
 // Security
 app.use(helmet());

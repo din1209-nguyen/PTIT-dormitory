@@ -1,6 +1,6 @@
 import type { Request, Response } from 'express';
 import { sendSuccess } from '../../common/utils/response.js';
-import { REFRESH_COOKIE_NAME, getRefreshCookieOptions } from '../../config/cookie.js';
+import { REFRESH_COOKIE_NAME, getClearRefreshCookieOptions, getRefreshCookieOptions } from '../../config/cookie.js';
 import * as authService from './auth.service.js';
 
 export async function loginHandler(req: Request, res: Response) {
@@ -33,7 +33,7 @@ export async function refreshHandler(req: Request, res: Response) {
 export async function logoutHandler(req: Request, res: Response) {
   const token = req.cookies[REFRESH_COOKIE_NAME];
   if (token) await authService.logout(token);
-  res.clearCookie(REFRESH_COOKIE_NAME, { path: '/api/auth' });
+  res.clearCookie(REFRESH_COOKIE_NAME, getClearRefreshCookieOptions());
   sendSuccess(res, null, 'Đã đăng xuất');
 }
 
@@ -54,7 +54,7 @@ export async function resetPasswordHandler(req: Request, res: Response) {
 
 export async function changePasswordHandler(req: Request, res: Response) {
   await authService.changePassword(req.user!.id, req.body.currentPassword, req.body.newPassword);
-  res.clearCookie(REFRESH_COOKIE_NAME, { path: '/api/auth' });
+  res.clearCookie(REFRESH_COOKIE_NAME, getClearRefreshCookieOptions());
   sendSuccess(res, null, 'Đã đổi mật khẩu — vui lòng đăng nhập lại');
 }
 

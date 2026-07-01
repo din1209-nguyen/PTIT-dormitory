@@ -54,7 +54,7 @@ export function Sidebar({ role, isExpanded, onToggle }: { role: Role; isExpanded
   const items = NAV_ITEMS[role] || [];
 
   return (
-    <aside className={`fixed left-0 top-0 z-40 flex h-full flex-col gap-2 rounded-r-[var(--radius-lg)] bg-bg-sidebar py-4 shadow-sm transition-all duration-300 ${isExpanded ? 'w-[240px] px-4' : 'w-[72px] items-center px-2'}`}>
+    <aside className={`fixed left-0 top-0 z-40 flex h-full flex-col gap-2 rounded-br-[var(--radius-lg)] bg-bg-sidebar py-4 shadow-sm transition-all duration-300 ${isExpanded ? 'w-[240px] px-4' : 'w-[72px] items-center px-2'}`}>
       <div className="mb-4 flex items-center justify-center">
         <Link href="/" className="flex items-center justify-center">
           <Image src="/logo-ptit.png" alt="PTIT" width={48} height={48} className="shrink-0 rounded-full" />
