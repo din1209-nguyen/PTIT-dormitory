@@ -1,7 +1,7 @@
-import { verifyMailTransporter } from '../integrations/mail/mail.client.js';
+import { verifyMailProvider } from '../integrations/mail/mail.client.js';
 
 async function main() {
-  const verified = await verifyMailTransporter();
+  const verified = await verifyMailProvider();
   process.exit(verified ? 0 : 1);
 }
 

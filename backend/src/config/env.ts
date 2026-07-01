@@ -34,6 +34,11 @@ const envSchema = z.object({
   COOKIE_SECRET: z.string().default('dev-cookie-secret-change-in-prod'),
 
   // SMTP — optional until email module
+  EMAIL_PROVIDER: z.enum(['smtp', 'brevo']).default('smtp'),
+  EMAIL_FROM: optionalTrimmedString,
+  EMAIL_TIMEOUT_MS: z.coerce.number().int().positive().default(10_000),
+  BREVO_API_KEY: optionalTrimmedString,
+
   SMTP_HOST: optionalTrimmedString,
   SMTP_PORT: z.coerce.number().optional(),
   SMTP_SECURE: optionalBoolean,

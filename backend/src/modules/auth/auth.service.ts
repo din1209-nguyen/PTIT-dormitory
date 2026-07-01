@@ -8,6 +8,7 @@ import { ErrorCode } from '../../common/errors/errorCodes.js';
 import { UserStatus } from '../../common/constants/statuses.js';
 import type { Role } from '../../common/constants/roles.js';
 import { logger } from '../../config/logger.js';
+import { env } from '../../config/env.js';
 import { logActivity } from '../../common/utils/auditLogger.js';
 import { AuditAction } from '../../common/constants/enums.js';
 import { queueEmail } from '../../integrations/mail/mail.service.js';
@@ -121,7 +122,9 @@ export async function forgotPassword(email: string) {
     expiresAt: new Date(Date.now() + 15 * 60 * 1000),
   });
 
-  logger.info(`[DEV] OTP for ${email}: ${otp}`);
+  if (env.NODE_ENV !== 'production') {
+    logger.info(`[DEV] OTP for ${email}: ${otp}`);
+  }
 
   await queueEmail({
     recipientEmail: email,

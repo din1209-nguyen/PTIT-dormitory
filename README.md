@@ -578,6 +578,12 @@ JWT_ACCESS_EXPIRES_IN=15m
 JWT_REFRESH_EXPIRES_IN=7d
 COOKIE_SECRET=change_me_cookie_secret
 
+EMAIL_PROVIDER=brevo
+EMAIL_FROM=PTIT Dormitory <your_verified_sender@example.com>
+EMAIL_TIMEOUT_MS=10000
+BREVO_API_KEY=your_brevo_api_key
+
+# Optional SMTP fallback/local
 SMTP_HOST=smtp.gmail.com
 SMTP_PORT=587
 SMTP_SECURE=false
@@ -750,13 +756,21 @@ COOKIE_SECRET=<strong-secret>
 
 Biến tùy chọn theo tính năng:
 
-- SMTP: `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM`, `SMTP_TIMEOUT_MS`
+- Email API: `EMAIL_PROVIDER`, `EMAIL_FROM`, `EMAIL_TIMEOUT_MS`, `BREVO_API_KEY`
+- SMTP fallback: `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM`, `SMTP_TIMEOUT_MS`
 - VNPay: `VNPAY_TMN_CODE`, `VNPAY_HASH_SECRET`, `VNPAY_URL`, `VNPAY_API_URL`, `VNPAY_RETURN_URL`, `VNPAY_IPN_URL`
 - Seed admin: `SEED_ADMIN_USERNAME`, `SEED_ADMIN_EMAIL`, `SEED_ADMIN_PASSWORD`
 
-SMTP production checklist:
+Brevo production checklist:
+
+- Render Free should use `EMAIL_PROVIDER=brevo` because outbound SMTP ports can time out.
+- Create a Brevo API key in `SMTP & API` -> `API Keys`.
+- Verify the sender email or domain in Brevo, then set `EMAIL_FROM=PTIT Dormitory <verified_sender_email>`.
+- Run `npm run email:verify -w backend` with production env values to verify the selected email provider.
+
+SMTP fallback checklist:
 
 - Gmail SSL: `SMTP_HOST=smtp.gmail.com`, `SMTP_PORT=465`, `SMTP_SECURE=true`.
 - Gmail STARTTLS: `SMTP_HOST=smtp.gmail.com`, `SMTP_PORT=587`, `SMTP_SECURE=false`.
 - Use a Gmail App Password, not the regular account password. If the app password is copied with spaces, the backend removes spaces for Gmail before authentication.
-- Run `npm run smtp:verify -w backend` with production env values to verify SMTP without using the UI.
+- Run `npm run smtp:verify -w backend` only when `EMAIL_PROVIDER=smtp`.

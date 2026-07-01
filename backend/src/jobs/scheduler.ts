@@ -5,7 +5,7 @@ import { runInvoiceOverdue } from './invoiceOverdue.job.js';
 export async function startScheduler() {
   const cron = await import('node-cron');
 
-  cron.schedule('*/30 * * * *', () => {
+  cron.schedule('*/5 * * * *', () => {
     runEmailRetry();
   });
 

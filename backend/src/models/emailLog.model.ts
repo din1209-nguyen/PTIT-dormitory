@@ -6,8 +6,11 @@ export interface IEmailLog extends Document {
   subject: string;
   content: string;
   status: EmailStatus;
+  provider?: string;
+  messageId?: string;
   errorMessage?: string;
   retryCount: number;
+  nextAttemptAt?: Date;
   sentAt?: Date;
   createdAt: Date;
   updatedAt: Date;
@@ -19,8 +22,11 @@ const emailLogSchema = new Schema<IEmailLog>(
     subject: { type: String, required: true },
     content: { type: String, required: true },
     status: { type: String, enum: Object.values(EmailStatus), required: true, default: EmailStatus.PENDING },
+    provider: { type: String },
+    messageId: { type: String },
     errorMessage: { type: String },
     retryCount: { type: Number, default: 0 },
+    nextAttemptAt: { type: Date },
     sentAt: { type: Date },
   },
   { timestamps: true },
@@ -28,6 +34,7 @@ const emailLogSchema = new Schema<IEmailLog>(
 
 emailLogSchema.index({ recipientEmail: 1 });
 emailLogSchema.index({ status: 1 });
+emailLogSchema.index({ status: 1, nextAttemptAt: 1 });
 emailLogSchema.index({ createdAt: -1 });
 
 export const EmailLog = mongoose.model<IEmailLog>('EmailLog', emailLogSchema);
