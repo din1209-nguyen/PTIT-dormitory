@@ -578,12 +578,14 @@ JWT_ACCESS_EXPIRES_IN=15m
 JWT_REFRESH_EXPIRES_IN=7d
 COOKIE_SECRET=change_me_cookie_secret
 
+# Production on Render uses Brevo over HTTPS.
 EMAIL_PROVIDER=brevo
 EMAIL_FROM=PTIT Dormitory <your_verified_sender@example.com>
 EMAIL_TIMEOUT_MS=10000
 BREVO_API_KEY=your_brevo_api_key
 
 # Optional SMTP fallback/local
+# To use SMTP locally, set EMAIL_PROVIDER=smtp.
 SMTP_HOST=smtp.gmail.com
 SMTP_PORT=587
 SMTP_SECURE=false
