@@ -4,10 +4,12 @@ import { logger } from './config/logger.js';
 import { connectDatabase } from './config/database.js';
 import { startScheduler } from './jobs/scheduler.js';
 import { ensureUpcomingSemesters } from './modules/semesters/semester.service.js';
+import { verifyMailTransporter } from './integrations/mail/mail.client.js';
 
 async function bootstrap() {
   await connectDatabase();
   startScheduler();
+  void verifyMailTransporter();
   await ensureUpcomingSemesters();
 
   const server = app.listen(env.PORT, () => {

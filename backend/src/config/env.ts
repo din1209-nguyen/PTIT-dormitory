@@ -11,6 +11,12 @@ const optionalBoolean = z.preprocess((value) => {
   return value;
 }, z.boolean().optional());
 
+const optionalTrimmedString = z.preprocess((value) => {
+  if (typeof value !== 'string') return value;
+  const trimmed = value.trim();
+  return trimmed === '' ? undefined : trimmed;
+}, z.string().optional());
+
 const envSchema = z.object({
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
   PORT: z.coerce.number().default(5000),
@@ -28,12 +34,13 @@ const envSchema = z.object({
   COOKIE_SECRET: z.string().default('dev-cookie-secret-change-in-prod'),
 
   // SMTP — optional until email module
-  SMTP_HOST: z.string().optional(),
+  SMTP_HOST: optionalTrimmedString,
   SMTP_PORT: z.coerce.number().optional(),
   SMTP_SECURE: optionalBoolean,
-  SMTP_USER: z.string().optional(),
-  SMTP_PASS: z.string().optional(),
-  SMTP_FROM: z.string().optional(),
+  SMTP_USER: optionalTrimmedString,
+  SMTP_PASS: optionalTrimmedString,
+  SMTP_FROM: optionalTrimmedString,
+  SMTP_TIMEOUT_MS: z.coerce.number().int().positive().default(10_000),
 
   // VNPay — optional until payment module
   VNPAY_TMN_CODE: z.string().optional(),
