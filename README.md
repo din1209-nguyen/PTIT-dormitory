@@ -727,9 +727,11 @@ NEXT_PUBLIC_APP_NAME=PTIT Dormitory
 Backend có thể deploy lên Render, Railway, VPS hoặc nền tảng Node.js tương đương.
 
 - Root Directory: `backend`
-- Build Command: `npm install && npm run build`
+- Build Command: `npm install --include=dev && npm run build`
 - Start Command: `npm start`
 - Health Check Path: `/api/health`
+
+Khi deploy trên Render, vẫn đặt `NODE_ENV=production` cho runtime nhưng phải cài `devDependencies` trong bước build, vì `tsc` cần `typescript` và các package `@types/*`. Repo đã có `.npmrc` với `include=dev` để tránh lỗi missing declaration file khi Render build.
 
 Biến môi trường production tối thiểu:
 
