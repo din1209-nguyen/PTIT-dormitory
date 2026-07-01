@@ -1,10 +1,3 @@
-// =====================================================
-// ERD DBML - Hệ thống quản lý sinh viên ở KTX HVCS
-// Version: Complete Business-Aligned ERD
-// Target: dbdiagram.io / MySQL-style relational design
-// Note: Nếu triển khai MongoDB, có thể map mỗi Table thành collection tương ứng.
-// =====================================================
-
 // =======================
 // ENUMS
 // =======================
@@ -28,6 +21,7 @@ Enum "STUDENT_gender_enum" {
 
 Enum "STUDENT_residence_type_enum" {
   "NOT_RESIDING"
+  "PENDING_ROOM"
   "RESIDING"
 }
 
@@ -38,6 +32,7 @@ Enum "SEMESTER_term_enum" {
 }
 
 Enum "SEMESTER_status_enum" {
+  "UNOPENED"
   "PREPARING"
   "ACTIVE"
   "FINISHED"
@@ -120,7 +115,6 @@ Enum "VIOLATION_status_enum" {
 
 Enum "BILL_status_enum" {
   "UNPAID"
-  "PENDING_CONFIRMATION"
   "PAID"
   "OVERDUE"
   "CANCELLED"
@@ -130,6 +124,7 @@ Enum "BILL_MEMBER_status_enum" {
   "UNPAID"
   "PAID"
   "WAIVED"
+  "CANCELLED"
 }
 
 Enum "PAYMENT_method_enum" {
@@ -317,9 +312,13 @@ Table "BUILDING" {
   "id" BINARY(16) [pk, default: `UUID_TO_BIN(UUID())`, note: 'ID khu/dãy nhà']
   "name" VARCHAR(50) [unique, not null, note: 'Tên khu nhà, ví dụ A, B, C']
   "description" TEXT [note: 'Mô tả khu nhà']
-  "is_active" BOOLEAN [not null, default: true, note: 'Còn sử dụng hay không']
+  "status" ROOM_status_enum [not null, default: 'ACTIVE', note: 'Trạng thái tòa nhà']
   "created_at" TIMESTAMP [not null, default: `CURRENT_TIMESTAMP`]
   "updated_at" TIMESTAMP [default: `CURRENT_TIMESTAMP`]
+
+  Indexes {
+    (status)
+  }
 }
 
 Table "FLOOR" {
@@ -327,9 +326,13 @@ Table "FLOOR" {
   "building_id" BINARY(16) [not null, note: 'Thuộc khu/dãy nhà']
   "floor_number" INT [not null, note: 'Số tầng']
   "description" TEXT [note: 'Mô tả tầng']
+  "status" ROOM_status_enum [not null, default: 'ACTIVE', note: 'Trạng thái tầng']
+  "created_at" TIMESTAMP [not null, default: `CURRENT_TIMESTAMP`]
+  "updated_at" TIMESTAMP [default: `CURRENT_TIMESTAMP`]
 
   Indexes {
     (building_id, floor_number) [unique]
+    (status)
   }
 }
 
@@ -539,7 +542,7 @@ Table "UTILITY_BILL" {
   "updated_at" TIMESTAMP [default: `CURRENT_TIMESTAMP`]
 
   Indexes {
-    (room_id, month, year) [unique]
+    (room_id, month, year) [unique, note: 'Partial unique cho hóa đơn chưa hủy trong MongoDB']
     (semester_id)
     (status)
     (due_date)

@@ -26,7 +26,7 @@ export async function seedDormitory() {
   for (const b of BUILDINGS) {
     let building = await Building.findOne({ name: b.name });
     if (!building) {
-      building = await Building.create({ name: b.name, description: `Dãy ${b.name}`, isActive: true });
+      building = await Building.create({ name: b.name, description: `Dãy ${b.name}`, status: 'ACTIVE' });
     }
 
     for (let f = 1; f <= FLOORS_PER_BUILDING; f++) {

@@ -47,7 +47,7 @@ async function getAvailableRooms(session?: ClientSession): Promise<RoomWithBeds[
   const [rooms, floors, buildings, beds, activeAssignments] = await Promise.all([
     Room.find({ status: RoomStatus.ACTIVE }).session(s).lean(),
     Floor.find().session(s).lean(),
-    Building.find({ $or: [{ isActive: true }, { isActive: { $exists: false } }] }).session(s).lean(),
+    Building.find({ status: 'ACTIVE' }).session(s).lean(),
     Bed.find({ status: BedStatus.AVAILABLE }).session(s).lean(),
     RoomAssignment.find({ status: RoomAssignmentStatus.ACTIVE }).select('roomId bedId studentSnapshot').session(s).lean(),
   ]);

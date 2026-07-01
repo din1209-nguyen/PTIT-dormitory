@@ -116,10 +116,22 @@ export async function seedRealisticTransactions() {
                 bedId: bed._id,
                 semesterId: sem._id,
                 status: semStatus,
-                checkInDate,
-                checkOutDate: isFinished ? sem.endDate : undefined,
-                roomSnapshot: { roomNumber: room.roomNumber, buildingName: 'Tòa nhà' },
-                bedSnapshot: { bedNumber: bed.bedNumber },
+                assignedAt: checkInDate,
+                studentSnapshot: {
+                  studentCode: student.studentCode,
+                  fullName: student.fullName,
+                  gender: student.gender,
+                  className: student.className,
+                  major: student.major,
+                  department: student.department,
+                  academicYear: student.academicYear,
+                },
+                roomSnapshot: {
+                  roomNumber: room.roomNumber,
+                  bedNumber: bed.bedNumber,
+                  genderType: room.genderType,
+                  capacity: room.capacity,
+                },
                 createdAt: checkInDate,
                 updatedAt: checkInDate
               }
@@ -132,11 +144,10 @@ export async function seedRealisticTransactions() {
                 _id: recordId,
                 studentId: student._id,
                 semesterId: sem._id,
-                roomId: room._id,
-                bedId: bed._id,
-                roomAssignmentId: assignmentId,
                 startDate: checkInDate,
                 endDate: isFinished ? sem.endDate : undefined,
+                registeredAt: checkInDate,
+                status: isFinished ? 'ENDED' : 'ACTIVE',
                 createdAt: checkInDate,
                 updatedAt: checkInDate
               }
@@ -242,9 +253,7 @@ export async function seedRealisticTransactions() {
               newElectricity: electricityUsage,
               oldWater: 0,
               newWater: waterUsage,
-              electricityUsage,
-              waterUsage,
-              recordedDate: new Date(year, month - 1, 28)
+              recordedAt: new Date(year, month - 1, 28)
             }
           }
         });
@@ -284,25 +293,29 @@ export async function seedRealisticTransactions() {
                 _id: memberBillId,
                 billId,
                 studentId: occ.studentId,
-                amount: costPerMember,
+                amountShare: costPerMember,
                 status: isPaid ? BillMemberStatus.PAID : BillMemberStatus.UNPAID,
-                paymentDate: isPaid ? pDate : undefined
+                paidAt: isPaid ? pDate : undefined
               }
             }
           });
 
           if (isPaid) {
+            const isVnpay = Math.random() > 0.3;
+            const txnRef = `SIM_${billId.toString()}_${occ.studentId.toString()}`;
             paymentOps.push({
               insertOne: {
                 document: {
-                  memberBillId,
                   billId,
                   studentId: occ.studentId,
                   amount: costPerMember,
-                  method: Math.random() > 0.3 ? PaymentMethod.VNPAY : PaymentMethod.CASH,
+                  method: isVnpay ? PaymentMethod.VNPAY : PaymentMethod.CASH,
                   status: PaymentStatus.SUCCESS,
-                  transactionId: `TXN${Date.now()}${randomInt(1000, 9999)}`,
-                  paymentDate: pDate,
+                  vnpTxnRef: isVnpay ? txnRef : undefined,
+                  vnpTransactionNo: isVnpay ? `VNP${randomInt(100000, 999999)}` : undefined,
+                  vnpResponseCode: isVnpay ? '00' : undefined,
+                  vnpPayDate: isVnpay ? `${year}${String(month).padStart(2, '0')}${String(pDate.getDate()).padStart(2, '0')}120000` : undefined,
+                  paidAt: pDate,
                   createdAt: pDate,
                   updatedAt: pDate
                 }
