@@ -46,7 +46,15 @@ const utilityBillSchema = new Schema<IUtilityBill>(
   { timestamps: true },
 );
 
-utilityBillSchema.index({ roomId: 1, month: 1, year: 1 });
+utilityBillSchema.index(
+  { roomId: 1, month: 1, year: 1 },
+  {
+    unique: true,
+    partialFilterExpression: {
+      status: { $in: [BillStatus.UNPAID, BillStatus.PAID, BillStatus.OVERDUE] },
+    },
+  },
+);
 utilityBillSchema.index({ semesterId: 1 });
 utilityBillSchema.index({ status: 1 });
 utilityBillSchema.index({ dueDate: 1 });

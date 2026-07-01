@@ -5,14 +5,19 @@ export interface IFloor extends Document {
   floorNumber: number;
   description?: string;
   status: string;
+  createdAt: Date;
+  updatedAt: Date;
 }
 
-const floorSchema = new Schema<IFloor>({
-  buildingId: { type: Schema.Types.ObjectId, ref: 'Building', required: true },
-  floorNumber: { type: Number, required: true },
-  description: { type: String },
-  status: { type: String, enum: ['ACTIVE', 'MAINTENANCE', 'INACTIVE'], default: 'ACTIVE' },
-});
+const floorSchema = new Schema<IFloor>(
+  {
+    buildingId: { type: Schema.Types.ObjectId, ref: 'Building', required: true },
+    floorNumber: { type: Number, required: true },
+    description: { type: String },
+    status: { type: String, enum: ['ACTIVE', 'MAINTENANCE', 'INACTIVE'], default: 'ACTIVE' },
+  },
+  { timestamps: true },
+);
 
 floorSchema.index({ buildingId: 1, floorNumber: 1 }, { unique: true });
 

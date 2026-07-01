@@ -12,7 +12,7 @@
 
 - Sản phẩm dùng nhận diện **PTIT — Học viện Công nghệ Bưu chính Viễn thông** (không dùng "HVCS").
 - `NEXT_PUBLIC_APP_NAME = "PTIT Dormitory"` (hoặc "Quản lý KTX PTIT").
-- Logo: đặt file logo PTIT chính thức tại `frontend/public/logo-ptit.svg` (hoặc `.png`) và tham chiếu từ `Sidebar`/`Topbar`. Tông màu UI giữ theo [02-ui-design-system.md](02-ui-design-system.md) (mẫu trong `ui_example.jpg`).
+- Logo: đặt file logo PTIT chính thức tại `frontend/public/logo-ptit.svg` (hoặc `.png`) và tham chiếu từ `Sidebar`/`Topbar`. Tông màu UI giữ theo [02-ui-design-system.md](02-ui-design-system.md).
 
 ## 2. Cấu trúc dự án ✅
 
