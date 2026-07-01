@@ -3,6 +3,15 @@ import type { Transporter } from 'nodemailer';
 import { env } from '../../config/env.js';
 import { logger } from '../../config/logger.js';
 
+export type MailProvider = 'smtp' | 'brevo';
+
+export interface SendMailResult {
+  success: boolean;
+  provider: MailProvider;
+  messageId?: string;
+  errorMessage?: string;
+}
+
 let transporter: Transporter | null = null;
 
 function getSmtpSecure(): boolean {
@@ -18,12 +27,28 @@ function getSmtpPassword(): string | undefined {
   return isGmailSmtp() ? env.SMTP_PASS.replace(/\s+/g, '') : env.SMTP_PASS;
 }
 
-function getSmtpFrom(): string | undefined {
-  return env.SMTP_FROM || (env.SMTP_USER ? `PTIT Dormitory <${env.SMTP_USER}>` : undefined);
+function getMailFrom(): string | undefined {
+  return env.EMAIL_FROM || env.SMTP_FROM || (env.SMTP_USER ? `PTIT Dormitory <${env.SMTP_USER}>` : undefined);
+}
+
+function parseEmailAddress(value: string): { email: string; name?: string } {
+  const match = value.match(/^\s*(?:"?([^"<]*)"?\s*)?<([^<>@\s]+@[^<>@\s]+)>\s*$/);
+  if (!match) return { email: value.trim() };
+
+  const name = match[1]?.trim();
+  return name ? { email: match[2], name } : { email: match[2] };
+}
+
+export function getMailProvider(): MailProvider {
+  return env.EMAIL_PROVIDER;
 }
 
 export function isMailConfigured(): boolean {
-  return !!(env.SMTP_HOST && env.SMTP_PORT && env.SMTP_USER && getSmtpPassword());
+  if (getMailProvider() === 'brevo') {
+    return !!(env.BREVO_API_KEY && getMailFrom());
+  }
+
+  return !!(env.SMTP_HOST && env.SMTP_PORT && env.SMTP_USER && getSmtpPassword() && getMailFrom());
 }
 
 function logSmtpConfigurationHints() {
@@ -43,10 +68,7 @@ function logSmtpConfigurationHints() {
 
 export function getTransporter(): Transporter | null {
   if (transporter) return transporter;
-  if (!isMailConfigured()) {
-    logger.warn('SMTP is not fully configured; emails will be logged as failed');
-    return null;
-  }
+  if (getMailProvider() !== 'smtp' || !isMailConfigured()) return null;
 
   logSmtpConfigurationHints();
   transporter = nodemailer.createTransport({
@@ -61,14 +83,81 @@ export function getTransporter(): Transporter | null {
   return transporter;
 }
 
-export async function sendMail(params: { to: string; subject: string; html: string }): Promise<boolean> {
+async function sendWithSmtp(params: { to: string; subject: string; html: string }): Promise<SendMailResult> {
+  const provider = 'smtp';
   const t = getTransporter();
-  if (!t) return false;
-  await t.sendMail({ from: getSmtpFrom(), to: params.to, subject: params.subject, html: params.html });
-  return true;
+  if (!t) return { success: false, provider, errorMessage: 'SMTP is not fully configured' };
+
+  try {
+    const info = await t.sendMail({ from: getMailFrom(), to: params.to, subject: params.subject, html: params.html });
+    return { success: true, provider, messageId: info.messageId };
+  } catch (err) {
+    return { success: false, provider, errorMessage: err instanceof Error ? err.message : 'Unknown SMTP error' };
+  }
 }
 
-export async function verifyMailTransporter() {
+async function sendWithBrevo(params: { to: string; subject: string; html: string }): Promise<SendMailResult> {
+  const provider = 'brevo';
+  const from = getMailFrom();
+  if (!env.BREVO_API_KEY || !from) {
+    return { success: false, provider, errorMessage: 'Brevo is not fully configured' };
+  }
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), env.EMAIL_TIMEOUT_MS);
+
+  try {
+    const response = await fetch('https://api.brevo.com/v3/smtp/email', {
+      method: 'POST',
+      signal: controller.signal,
+      headers: {
+        accept: 'application/json',
+        'api-key': env.BREVO_API_KEY,
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        sender: parseEmailAddress(from),
+        to: [parseEmailAddress(params.to)],
+        subject: params.subject,
+        htmlContent: params.html,
+      }),
+    });
+
+    const text = await response.text();
+    const payload = text ? JSON.parse(text) as { messageId?: string; message?: string; code?: string } : {};
+    if (!response.ok) {
+      const message = payload.message || `Brevo API failed with status ${response.status}`;
+      return { success: false, provider, errorMessage: payload.code ? `${payload.code}: ${message}` : message };
+    }
+
+    return { success: true, provider, messageId: payload.messageId };
+  } catch (err) {
+    const errorMessage = err instanceof Error ? err.message : 'Unknown Brevo error';
+    return { success: false, provider, errorMessage };
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+export async function sendMail(params: { to: string; subject: string; html: string }): Promise<SendMailResult> {
+  if (!isMailConfigured()) {
+    return { success: false, provider: getMailProvider(), errorMessage: `${getMailProvider()} is not fully configured` };
+  }
+
+  return getMailProvider() === 'brevo' ? sendWithBrevo(params) : sendWithSmtp(params);
+}
+
+export async function verifyMailProvider() {
+  if (!isMailConfigured()) {
+    logger.warn('Email provider is not fully configured', { provider: getMailProvider() });
+    return false;
+  }
+
+  if (getMailProvider() === 'brevo') {
+    logger.info('Brevo email provider configured', { provider: 'brevo' });
+    return true;
+  }
+
   const t = getTransporter();
   if (!t) return false;
 
@@ -81,3 +170,5 @@ export async function verifyMailTransporter() {
     return false;
   }
 }
+
+export const verifyMailTransporter = verifyMailProvider;

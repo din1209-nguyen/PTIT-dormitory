@@ -11,13 +11,13 @@ export async function sendEmail({
   html: string;
 }) {
   try {
-    const sent = await sendMail({ to, subject, html });
-    if (!sent) {
-      logger.warn('[EmailService] SMTP is not configured; skipped email', { to, subject });
+    const result = await sendMail({ to, subject, html });
+    if (!result.success) {
+      logger.warn('[EmailService] Email was not sent', { to, subject, provider: result.provider, error: result.errorMessage });
       return;
     }
 
-    logger.info('[EmailService] Email sent', { to, subject });
+    logger.info('[EmailService] Email sent', { to, subject, provider: result.provider, messageId: result.messageId });
   } catch (error) {
     logger.error('[EmailService] Failed to send email', { to, subject, error });
     throw error;
