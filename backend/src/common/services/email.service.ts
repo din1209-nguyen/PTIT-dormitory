@@ -3,11 +3,15 @@ import { env } from '../../config/env.js';
 
 let transporter: nodemailer.Transporter | null = null;
 
+function getSmtpSecure(): boolean {
+  return env.SMTP_SECURE ?? env.SMTP_PORT === 465;
+}
+
 if (env.SMTP_HOST && env.SMTP_USER && env.SMTP_PASS) {
   transporter = nodemailer.createTransport({
     host: env.SMTP_HOST,
     port: env.SMTP_PORT || 587,
-    secure: env.SMTP_PORT === 465, // true cho port 465, false cho 587
+    secure: getSmtpSecure(), // 465 uses SSL, 587 usually uses STARTTLS
     auth: {
       user: env.SMTP_USER,
       pass: env.SMTP_PASS,

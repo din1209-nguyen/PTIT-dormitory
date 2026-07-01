@@ -1,6 +1,16 @@
 import 'dotenv/config';
 import { z } from 'zod';
 
+const optionalBoolean = z.preprocess((value) => {
+  if (value === undefined || value === '') return undefined;
+  if (typeof value !== 'string') return value;
+
+  const normalized = value.trim().toLowerCase();
+  if (['true', '1', 'yes', 'y'].includes(normalized)) return true;
+  if (['false', '0', 'no', 'n'].includes(normalized)) return false;
+  return value;
+}, z.boolean().optional());
+
 const envSchema = z.object({
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
   PORT: z.coerce.number().default(5000),
@@ -20,6 +30,7 @@ const envSchema = z.object({
   // SMTP — optional until email module
   SMTP_HOST: z.string().optional(),
   SMTP_PORT: z.coerce.number().optional(),
+  SMTP_SECURE: optionalBoolean,
   SMTP_USER: z.string().optional(),
   SMTP_PASS: z.string().optional(),
   SMTP_FROM: z.string().optional(),

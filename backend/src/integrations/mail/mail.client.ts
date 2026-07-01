@@ -5,6 +5,10 @@ import { logger } from '../../config/logger.js';
 
 let transporter: Transporter | null = null;
 
+function getSmtpSecure(): boolean {
+  return env.SMTP_SECURE ?? env.SMTP_PORT === 465;
+}
+
 export function isMailConfigured(): boolean {
   return !!(env.SMTP_HOST && env.SMTP_PORT && env.SMTP_USER && env.SMTP_PASS);
 }
@@ -18,7 +22,7 @@ export function getTransporter(): Transporter | null {
   transporter = nodemailer.createTransport({
     host: env.SMTP_HOST,
     port: env.SMTP_PORT,
-    secure: env.SMTP_PORT === 465,
+    secure: getSmtpSecure(),
     auth: { user: env.SMTP_USER, pass: env.SMTP_PASS },
   });
   return transporter;
