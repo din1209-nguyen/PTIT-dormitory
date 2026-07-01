@@ -19,6 +19,17 @@
 
 ---
 
+## Truy cập nhanh Production
+
+> Frontend production: **[https://neethgie-plus-frontend.vercel.app/](https://neethgie-plus-frontend.vercel.app/)**
+
+| Mục đích | URL |
+|---|---|
+| Mở ứng dụng | [https://neethgie-plus-frontend.vercel.app/](https://neethgie-plus-frontend.vercel.app/) |
+| API base | `https://neethgie-plus-frontend.vercel.app/api` |
+| Health check | `https://neethgie-plus-frontend.vercel.app/api/health` |
+| VNPay return | `https://neethgie-plus-frontend.vercel.app/payment/vnpay-return` |
+
 ## Tổng quan
 
 Dự án phục vụ nghiệp vụ quản lý sinh viên ở ký túc xá theo từng kỳ lưu trú. Hệ thống hỗ trợ cán bộ quản lý tiếp nhận danh sách sinh viên, import Excel, phân phòng/giường, theo dõi lịch sử lưu trú, phát hành thông báo, quản lý đơn từ, vi phạm, hóa đơn điện nước và thanh toán VNPay sandbox.
@@ -104,6 +115,72 @@ flowchart LR
 - Các nghiệp vụ nhiều bước như import Excel, xếp phòng, chuyển kỳ và thanh toán cần transaction/idempotency ở backend.
 - Email và thông báo được tách khỏi transaction chính để tránh làm hỏng dữ liệu hợp lệ khi provider bên ngoài lỗi.
 - Response API được chuẩn hóa, lỗi đi qua middleware tập trung.
+
+## Database Schema
+
+Database sử dụng MongoDB thông qua Mongoose. Thiết kế schema đầy đủ được lưu tại [`docs/data-model.dbml`](docs/data-model.dbml) để có thể xem bằng dbdiagram.io; các bảng trong DBML được map sang collection/model MongoDB tương ứng trong `backend/src/models`.
+
+### Nhóm collection chính
+
+| Nhóm dữ liệu | Collection / model | Vai trò |
+|---|---|---|
+| Auth & RBAC | `User`, `Permission`, `RolePermission`, `RefreshToken`, `PasswordResetToken` | Xác thực, phiên đăng nhập, phân quyền và reset mật khẩu. |
+| Sinh viên & lưu trú | `Student`, `Semester`, `ResidenceRecord`, `RoomAssignment` | Hồ sơ sinh viên, kỳ lưu trú, lịch sử cư trú và gán phòng/giường theo kỳ. |
+| Cấu trúc ký túc xá | `Building`, `Floor`, `Room`, `Bed` | Mô hình vật lý của ký túc xá từ tòa nhà đến từng giường. |
+| Nội quy & giao tiếp | `Regulation`, `Notification`, `NotificationReceiver`, `StudentRequest`, `Violation` | Nội quy, thông báo, đơn từ sinh viên và vi phạm. |
+| Điện nước & thanh toán | `UtilityUsage`, `UtilityBill`, `UtilityBillMember`, `Payment` | Chỉ số điện nước, hóa đơn phòng, trạng thái từng thành viên và giao dịch VNPay/tiền mặt. |
+| Cấu hình & vận hành | `SystemConfig`, `ElectricPriceTier`, `ImportBatch`, `ImportRowError`, `EmailLog`, `ActivityLog` | Tham số hệ thống, giá điện, import Excel, email queue/log và audit log. |
+
+### Quan hệ nghiệp vụ cốt lõi
+
+```mermaid
+erDiagram
+  USER ||--o| STUDENT : owns
+  USER ||--o{ REFRESH_TOKEN : has
+  USER ||--o{ ACTIVITY_LOG : writes
+
+  STUDENT ||--o{ RESIDENCE_RECORD : registers
+  SEMESTER ||--o{ RESIDENCE_RECORD : contains
+  RESIDENCE_RECORD ||--o| ROOM_ASSIGNMENT : assigned_by
+
+  BUILDING ||--o{ FLOOR : has
+  FLOOR ||--o{ ROOM : has
+  ROOM ||--o{ BED : has
+  ROOM ||--o{ UTILITY_USAGE : records
+  ROOM ||--o{ UTILITY_BILL : billed
+
+  STUDENT ||--o{ ROOM_ASSIGNMENT : receives
+  SEMESTER ||--o{ ROOM_ASSIGNMENT : scopes
+  ROOM ||--o{ ROOM_ASSIGNMENT : hosts
+  BED ||--o{ ROOM_ASSIGNMENT : allocated
+
+  UTILITY_USAGE ||--o| UTILITY_BILL : generates
+  UTILITY_BILL ||--o{ UTILITY_BILL_MEMBER : splits_to
+  STUDENT ||--o{ UTILITY_BILL_MEMBER : pays_share
+  UTILITY_BILL ||--o{ PAYMENT : paid_by
+
+  STUDENT ||--o{ STUDENT_REQUEST : creates
+  STUDENT ||--o{ VIOLATION : has
+  NOTIFICATION ||--o{ NOTIFICATION_RECEIVER : delivered_to
+```
+
+### Ràng buộc và index quan trọng
+
+- `User.username`, `User.email`, `Student.studentCode` là unique để tránh trùng tài khoản và mã sinh viên.
+- `ResidenceRecord` unique theo `{ studentId, semesterId }`, bảo đảm một sinh viên chỉ có một hồ sơ lưu trú trong một kỳ.
+- `RoomAssignment` unique theo `{ studentId, semesterId }` và `{ bedId, semesterId }` cho assignment đang active, tránh một sinh viên có nhiều giường hoặc một giường có nhiều sinh viên trong cùng kỳ.
+- `Floor` unique theo `{ buildingId, floorNumber }`, `Room` unique theo `{ floorId, roomNumber }`, `Bed` unique theo `{ roomId, bedNumber }`.
+- `UtilityUsage` và `UtilityBill` được index theo `{ roomId, month, year }` để tránh ghi trùng chỉ số/hóa đơn cùng phòng cùng tháng.
+- `RefreshToken` và `PasswordResetToken` có TTL index theo `expiresAt` để tự dọn token hết hạn.
+- `Payment.vnpTxnRef` unique sparse để bảo đảm giao dịch VNPay idempotent.
+
+### Luồng dữ liệu chính
+
+1. Cán bộ tạo hoặc import sinh viên vào kỳ lưu trú, hệ thống tạo/cập nhật `Student`, `ResidenceRecord`, `ImportBatch` và `ImportRowError` nếu có lỗi.
+2. Khi xếp phòng, backend tạo `RoomAssignment` liên kết `Student`, `Semester`, `Room`, `Bed` và snapshot dữ liệu để giữ lịch sử.
+3. Khi nhập điện nước, `UtilityUsage` được dùng để sinh `UtilityBill`; hệ thống tạo `UtilityBillMember` cho từng sinh viên trong phòng.
+4. Thanh toán VNPay/tiền mặt tạo `Payment`; khi thành công, backend cập nhật `UtilityBill` và các `UtilityBillMember` liên quan.
+5. Mọi nghiệp vụ quan trọng ghi `ActivityLog`; thông báo/email được lưu qua `Notification`, `NotificationReceiver` và `EmailLog`.
 
 ## Tech Stack
 
